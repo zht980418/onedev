@@ -25,6 +25,7 @@ import io.onedev.server.util.criteria.Criteria;
 import io.onedev.server.web.component.markdown.MarkdownViewer;
 import io.onedev.server.web.component.modal.ModalLink;
 import io.onedev.server.web.component.modal.ModalPanel;
+import io.onedev.server.web.component.project.forkoption.ForkOptionPanel;
 import io.onedev.server.web.page.project.ProjectListPage;
 import io.onedev.server.web.page.project.dashboard.ProjectDashboardPage;
 
@@ -74,46 +75,40 @@ public abstract class ProjectInfoPanel extends Panel {
 		forkInfo.add(forksLink);
 		
         forkInfo.add(new ModalLink("forkNow") {
+			
+			@Override
+			public void onClick(AjaxRequestTarget target) {
+				super.onClick(target);
+				onPromptForkOption(target);
+			}
 
-						 @Override
-						 protected String getModalCssClass() {
-							 return "modal-lg";
-						 }
+			@Override
+			protected Component newContent(String id, ModalPanel modal) {
+				return new ForkOptionPanel(id, projectModel) {
 
-						 @Override
-						 public void onClick(AjaxRequestTarget target) {
-							 super.onClick(target);
-							 onPromptForkOption(target);
-						 }
-
-						 @Override
-						 protected Component newContent(String id, ModalPanel modal) {
-							 return new ForkOptionPanel(id, projectModel) {
-
-								 @Override
-								 protected void onClose(AjaxRequestTarget target) {
-									 modal.close();
-								 }
-
-							 };
-						 }
-//			only the one who create the project can fork it
-//		}.setVisible(SecurityUtils.canReadCode(getProject()) && SecurityUtils.canCreateProjects()));
-//			demand 2 make fork button visible to everybody
-					 });
+					@Override
+					protected void onClose(AjaxRequestTarget target) {
+						modal.close();
+					}
+					
+				};
+			}
+			
+		}.setVisible(SecurityUtils.canReadCode(getProject()) && SecurityUtils.canCreateProjects()));
+        
         SettingManager settingManager = OneDev.getInstance(SettingManager.class);
         if (settingManager.getServiceDeskSetting() != null
         		&& settingManager.getMailSetting() != null 
-        		&& settingManager.getMailSetting().getReceiveMailSetting() != null
+        		&& settingManager.getMailSetting().getCheckSetting() != null
         		&& getProject().isIssueManagement()) {
         	
         	String subAddressed;
         	
-			ParsedEmailAddress emailAddress = ParsedEmailAddress.parse(settingManager.getMailSetting().getEmailAddress());
+			ParsedEmailAddress checkAddress = ParsedEmailAddress.parse(settingManager.getMailSetting().getCheckSetting().getCheckAddress());
 			if (getProject().getServiceDeskName() != null)
-				subAddressed = emailAddress.getSubAddressed(getProject().getServiceDeskName());
+				subAddressed = checkAddress.getSubAddressed(getProject().getServiceDeskName());
 			else
-				subAddressed = emailAddress.getSubAddressed(getProject().getPath());
+				subAddressed = checkAddress.getSubAddressed(getProject().getPath());
         	
         	add(new WebMarkupContainer("serviceDesk") {
 

@@ -92,7 +92,7 @@ public class PullRequestResource {
 			throw new UnauthorizedException();
     	return pullRequest.getMergePreview();
     }
-
+	
 	@Api(order=300)
 	@Path("/{requestId}/assignments")
     @GET
@@ -102,7 +102,7 @@ public class PullRequestResource {
 			throw new UnauthorizedException();
     	return pullRequest.getAssignments();
     }
-
+	
 	@Api(order=400)
 	@Path("/{requestId}/reviews")
     @GET
@@ -114,7 +114,7 @@ public class PullRequestResource {
     			.filter(it-> it.getStatus() != Status.EXCLUDED)
     			.collect(Collectors.toList());
     }
-
+	
 	@Api(order=500)
 	@Path("/{requestId}/comments")
     @GET
@@ -124,7 +124,7 @@ public class PullRequestResource {
 			throw new UnauthorizedException();
     	return pullRequest.getComments();
     }
-
+	
 	@Api(order=600)
 	@Path("/{requestId}/watches")
     @GET
@@ -134,7 +134,7 @@ public class PullRequestResource {
 			throw new UnauthorizedException();
     	return pullRequest.getWatches();
     }
-
+	
 	@Api(order=700)
 	@Path("/{requestId}/updates")
     @GET
@@ -144,7 +144,7 @@ public class PullRequestResource {
 			throw new UnauthorizedException();
     	return pullRequest.getSortedUpdates();
     }
-
+	
 	@Api(order=800)
 	@Path("/{requestId}/current-builds")
     @GET
@@ -154,7 +154,7 @@ public class PullRequestResource {
 			throw new UnauthorizedException();
     	return pullRequest.getCurrentBuilds();
     }
-
+	
 	@Api(order=900)
 	@Path("/{requestId}/changes")
     @GET
@@ -164,7 +164,7 @@ public class PullRequestResource {
 			throw new UnauthorizedException();
     	return pullRequest.getChanges();
     }
-
+	
 	@Api(order=1000)
 	@Path("/{requestId}/fixed-issue-ids")
     @GET
@@ -174,24 +174,24 @@ public class PullRequestResource {
 			throw new UnauthorizedException();
     	return pullRequest.getFixedIssueIds();
     }
-
+	
 	@Api(order=1100)
 	@GET
     public List<PullRequest> queryBasicInfo(
     		@QueryParam("query") @Api(description="Syntax of this query is the same as query box in <a href='/pull-requests'>pull requests page</a>", example="\"Number\" is \"projectName#100\"") String query, 
     		@QueryParam("offset") @Api(example="0") int offset, 
     		@QueryParam("count") @Api(example="100") int count) {
-
+		
     	if (count > RestConstants.MAX_PAGE_SIZE)
     		throw new InvalidParamException("Count should not be greater than " + RestConstants.MAX_PAGE_SIZE);
 
     	PullRequestQuery parsedQuery;
 		try {
-			parsedQuery = PullRequestQuery.parse(null, query);
+			parsedQuery = PullRequestQuery.parse(null, query, true);
 		} catch (Exception e) {
 			throw new InvalidParamException("Error parsing query", e);
 		}
-
+    	
     	return pullRequestManager.query(null, parsedQuery, false, offset, count);
     }
 
@@ -199,20 +199,20 @@ public class PullRequestResource {
 	@POST
     public Long create(@NotNull PullRequestOpenData data) {
 		User user = SecurityUtils.getUser();
-
+		
 		ProjectAndBranch target = new ProjectAndBranch(data.getTargetProjectId(), data.getTargetBranch());
 		ProjectAndBranch source = new ProjectAndBranch(data.getSourceProjectId(), data.getSourceBranch());
-
+		
 		if (!SecurityUtils.canReadCode(target.getProject()) || !SecurityUtils.canReadCode(source.getProject()))
 			throw new UnauthorizedException();
-
+		
 		if (target.equals(source))
 			throw new InvalidParamException("Source and target are the same");
-
+		
 		PullRequest request = pullRequestManager.findOpen(target, source);
 		if (request != null)
 			throw new InvalidParamException("Another pull request already open for this change");
-
+		
 		request = pullRequestManager.findEffective(target, source);
 		if (request != null) { 
 			if (request.isOpen())
@@ -225,7 +225,7 @@ public class PullRequestResource {
 		ObjectId baseCommitId = GitUtils.getMergeBase(
 				target.getProject().getRepository(), target.getObjectId(), 
 				source.getProject().getRepository(), source.getObjectId());
-
+		
 		if (baseCommitId == null)
 			throw new InvalidParamException("No common base for target and source");
 
@@ -236,7 +236,7 @@ public class PullRequestResource {
 		request.setBaseCommitHash(baseCommitId.name());
 		request.setDescription(data.getDescription());
 		request.setMergeStrategy(data.getMergeStrategy());
-
+		
 		if (request.getBaseCommitHash().equals(source.getObjectName())) 
 			throw new InvalidParamException("Change already merged");
 
@@ -250,12 +250,12 @@ public class PullRequestResource {
 		request.getUpdates().add(update);
 
 		pullRequestManager.checkReviews(request, false);
-
+		
 		for (Long reviewerId: data.getReviewerIds()) {
 			User reviewer = userManager.load(reviewerId);
 			if (reviewer.equals(request.getSubmitter()))
 				throw new ExplicitException("Pull request submitter can not be reviewer");
-
+			
 			if (request.getReview(reviewer) == null) {
 				PullRequestReview review = new PullRequestReview();
 				review.setRequest(request);
@@ -270,11 +270,11 @@ public class PullRequestResource {
 			assignment.setUser(userManager.load(assigneeId));
 			request.getAssignments().add(assignment);
 		}
-
+				
 		pullRequestManager.open(request);
 		return request.getId();
     }
-
+	
 	@Api(order=1300)
 	@Path("/{requestId}/title")
     @POST
@@ -285,7 +285,7 @@ public class PullRequestResource {
 		pullRequestChangeManager.changeTitle(request, title);
 		return Response.ok().build();
     }
-
+	
 	@Api(order=1400)
 	@Path("/{requestId}/description")
     @POST
@@ -296,7 +296,7 @@ public class PullRequestResource {
 		pullRequestManager.saveDescription(request, description);
 		return Response.ok().build();
     }
-
+	
 	@Api(order=1500)
 	@Path("/{requestId}/merge-strategy")
     @POST
@@ -307,7 +307,7 @@ public class PullRequestResource {
 		pullRequestChangeManager.changeMergeStrategy(request, mergeStrategy);
 		return Response.ok().build();
     }
-
+	
 	@Api(order=1600)
 	@Path("/{requestId}/reopen")
     @POST
@@ -318,11 +318,11 @@ public class PullRequestResource {
     	String errorMessage = request.checkReopen();
     	if (errorMessage != null)
     		throw new ExplicitException(errorMessage);
-
+    	
 		pullRequestManager.reopen(request, note);
 		return Response.ok().build();
     }
-
+	
 	@Api(order=1700)
 	@Path("/{requestId}/discard")
     @POST
@@ -332,11 +332,11 @@ public class PullRequestResource {
 			throw new UnauthorizedException();
     	if (!request.isOpen())
     		throw new ExplicitException("Pull request already closed");
-
+    	
 		pullRequestManager.discard(request, note);
 		return Response.ok().build();
     }
-
+	
 	@Api(order=1800)
 	@Path("/{requestId}/merge")
     @POST
@@ -347,49 +347,49 @@ public class PullRequestResource {
     	String errorMessage = request.checkMerge();
     	if (errorMessage != null)
     		throw new ExplicitException(errorMessage);
-
+		
 		pullRequestManager.merge(request, note);
 		return Response.ok().build();
     }
-
+	
 	@Api(order=1900)
 	@Path("/{requestId}/delete-source-branch")
     @POST
     public Response deleteSourceBranch(@PathParam("requestId") Long requestId, String note) {
 		PullRequest request = pullRequestManager.load(requestId);
-
+		
 		if (!SecurityUtils.canModify(request) 
 				|| !SecurityUtils.canDeleteBranch(request.getSourceProject(), request.getSourceBranch())) {
 			throw new UnauthorizedException();
 		}
-
+		
     	String errorMessage = request.checkDeleteSourceBranch();
     	if (errorMessage != null)
     		throw new ExplicitException(errorMessage);
-
+		
 		pullRequestManager.deleteSourceBranch(request, note);
 		return Response.ok().build();
     }
-
+	
 	@Api(order=2000)
 	@Path("/{requestId}/restore-source-branch")
     @POST
     public Response restoreSourceBranch(@PathParam("requestId") Long requestId, String note) {
 		PullRequest request = pullRequestManager.load(requestId);
-
+		
 		if (!SecurityUtils.canModify(request) || 
 				!SecurityUtils.canWriteCode(request.getSourceProject())) {
 			throw new UnauthorizedException();
 		}
-
+		
     	String errorMessage = request.checkRestoreSourceBranch();
     	if (errorMessage != null)
     		throw new ExplicitException(errorMessage);
-
+		
 		pullRequestManager.restoreSourceBranch(request, note);
 		return Response.ok().build();
     }
-
+	
 	@Api(order=2100)
 	@Path("/{requestId}")
     @DELETE
@@ -400,7 +400,7 @@ public class PullRequestResource {
     	pullRequestManager.delete(pullRequest);
     	return Response.ok().build();
     }
-
+	
 	@EntityCreate(PullRequest.class)
 	public static class PullRequestOpenData implements Serializable {
 

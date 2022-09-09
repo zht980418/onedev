@@ -1,5 +1,6 @@
 package io.onedev.server.web.component.project.comment;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.annotation.Nullable;
@@ -24,10 +25,12 @@ import org.hibernate.StaleStateException;
 
 import com.google.common.collect.Sets;
 
+import io.onedev.commons.utils.ExplicitException;
 import io.onedev.server.OneDev;
 import io.onedev.server.entitymanager.UserManager;
 import io.onedev.server.model.Project;
 import io.onedev.server.model.User;
+import io.onedev.server.util.facade.UserCache;
 import io.onedev.server.web.ajaxlistener.ConfirmClickListener;
 import io.onedev.server.web.ajaxlistener.ConfirmLeaveListener;
 import io.onedev.server.web.component.markdown.AttachmentSupport;
@@ -149,7 +152,10 @@ public abstract class CommentPanel extends Panel {
 						} catch (StaleStateException e) {
 							warn("Some one changed the content you are editing. Reload the page and try again.");
 							target.add(feedback);
-						}
+						} catch (ExplicitException e) {
+							error(e.getMessage());
+							target.add(feedback);
+						}							
 					}
 					
 					@Override
@@ -242,7 +248,10 @@ public abstract class CommentPanel extends Panel {
 	protected abstract DeleteCallback getDeleteCallback();
 	
 	protected List<User> getMentionables() {
-		return OneDev.getInstance(UserManager.class).queryAndSort(Sets.newHashSet());
+		UserCache cache = OneDev.getInstance(UserManager.class).cloneCache();
+		List<User> users = new ArrayList<>(cache.getUsers());
+		users.sort(cache.comparingDisplayName(Sets.newHashSet()));
+		return users;
 	}	
 	
 }

@@ -7,9 +7,8 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -23,7 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.onedev.commons.bootstrap.Bootstrap;
-import io.onedev.commons.loader.AppLoader;
 import io.onedev.commons.utils.FileUtils;
 import io.onedev.commons.utils.StringUtils;
 import io.onedev.commons.utils.command.Commandline;
@@ -48,7 +46,7 @@ public class Upgrade extends DefaultPersistManager {
 	
 	public static final String DB_BACKUP_DIR = "db-backup";
 	
-	private static final Pattern PRODUCT_FILE_NAME_PATTERN = Pattern.compile("io\\.onedev\\.server-product-(.*?)\\.jar");
+	private static final String RELEASE_PROPS_FILE = "release.properties";
 	
 	public static final String INCOMPATIBILITIES = "incompatibilities/incompatibilities.md";
 	
@@ -65,17 +63,21 @@ public class Upgrade extends DefaultPersistManager {
 	}
 
 	protected Commandline buildCommandline(File upgradeDir, String command, String...commandArgs) {
-		String version;
-		File versionFile = new File(upgradeDir, "version.txt");
-		if (versionFile.exists()) {
-			try {
-				version = FileUtils.readFileToString(versionFile, Charset.defaultCharset()).trim();
-			} catch (IOException e) {
-				throw new RuntimeException(e);
+		String version = loadReleaseProps(new File(upgradeDir, RELEASE_PROPS_FILE)).getProperty("version");
+		
+		if (version == null) {
+			File versionFile = new File(upgradeDir, "version.txt");
+			if (versionFile.exists()) {
+				try {
+					version = FileUtils.readFileToString(versionFile, Charset.defaultCharset()).trim();
+				} catch (IOException e) {
+					throw new RuntimeException(e);
+				}
 			}
-		} else {
-			version = "1.0-EAP-build26";
 		}
+		
+		if (version == null)
+			version = "1.0-EAP-build26";
 		
 		String bootstrapClass;
 		if (version.startsWith("1.0-EAP")) {
@@ -142,6 +144,13 @@ public class Upgrade extends DefaultPersistManager {
 		return dialect;
 	}
 	
+	private Properties loadReleaseProps(File releasePropsFile) {
+		if (releasePropsFile.exists())
+			return FileUtils.loadProperties(releasePropsFile);
+		else
+			return new Properties();
+	}
+	
 	@Override
 	public void start() {
 		if (Bootstrap.command.getArgs().length == 0) {
@@ -173,17 +182,11 @@ public class Upgrade extends DefaultPersistManager {
 						upgradeDir.getAbsolutePath());
 				System.exit(1);
 			}
-
-			String oldAppVersion = null;
-			for (File file: new File(upgradeDir, "lib").listFiles()) {
-				Matcher matcher = PRODUCT_FILE_NAME_PATTERN.matcher(file.getName());
-				if (matcher.matches()) {
-					oldAppVersion = matcher.group(1);
-					break;
-				}
-			}
 			
-			if (oldAppVersion == null || !oldAppVersion.equals(AppLoader.getProduct().getVersion())) {
+			Properties releaseProps = loadReleaseProps(new File(Bootstrap.installDir, RELEASE_PROPS_FILE));
+			Properties oldReleaseProps = loadReleaseProps(new File(upgradeDir, RELEASE_PROPS_FILE));
+			
+			if (!releaseProps.equals(oldReleaseProps)) {
 				logger.info("Upgrading {}...", upgradeDir.getAbsolutePath());
 				
 				if (isServerRunning(upgradeDir) || isServerRunning(Bootstrap.installDir)) {
@@ -424,7 +427,7 @@ public class Upgrade extends DefaultPersistManager {
 	
 	protected void updateProgramFiles(File upgradeDir) {
 		cleanAndCopy(new File(Bootstrap.installDir, "3rdparty-licenses"), new File(upgradeDir, "3rdparty-licenses"));
-		
+
 		File siteServerScriptFile = new File(upgradeDir, "bin/server.sh");
 		for (File file: Bootstrap.getBinDir().listFiles()) {
 			if (!file.getName().endsWith(".pid") && !file.getName().endsWith(".status")) {
@@ -542,6 +545,19 @@ public class Upgrade extends DefaultPersistManager {
 				}
 			}
 		}
+		
+		FileUtils.createDir(new File(upgradeDir, "site/assets/root"));
+		if (new File(upgradeDir, "site/assets/robots.txt").exists()) {
+			try {
+				FileUtils.copyFile(
+						new File(upgradeDir, "site/assets/robots.txt"), 
+						new File(upgradeDir, "site/assets/root/robots.txt"));
+				FileUtils.deleteFile(new File(upgradeDir, "site/assets/robots.txt"));
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
 		try {
 			File wrapperConfFile = new File(upgradeDir, "conf/wrapper.conf");
 			String wrapperConf = FileUtils.readFileToString(wrapperConfFile, StandardCharsets.UTF_8);
@@ -603,30 +619,43 @@ public class Upgrade extends DefaultPersistManager {
 				FileUtils.writeStringToFile(serverPropsFile, serverProps, StandardCharsets.UTF_8);
 			}
 
-			File logbackPropsFile = new File(upgradeDir, "conf/logback.xml");
-			String logbackProps = FileUtils.readFileToString(logbackPropsFile, StandardCharsets.UTF_8);
-			if (!logbackProps.contains("AggregatedServiceLoader")) 
-				FileUtils.copyFile(new File(Bootstrap.getConfDir(), "logback.xml"), logbackPropsFile);
+			File logbackConfigFile = new File(upgradeDir, "conf/logback.xml");
+			String logbackConfig = FileUtils.readFileToString(logbackConfigFile, StandardCharsets.UTF_8);
+			if (!logbackConfig.contains("AggregatedServiceLoader")) 
+				FileUtils.copyFile(new File(Bootstrap.getConfDir(), "logback.xml"), logbackConfigFile);
 			
 			File sampleKeystoreFile = new File(upgradeDir, "conf/sample.keystore");
 			if (sampleKeystoreFile.exists())
 				FileUtils.deleteFile(sampleKeystoreFile);
 			
-			File logbackConfigFile = new File(upgradeDir, "conf/logback.xml");
-			String logbackConfig = FileUtils.readFileToString(logbackConfigFile, StandardCharsets.UTF_8);
-			logbackConfig = StringUtils.replace(logbackConfig, "<triggeringPolicy class=\"ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy\"/>", 
+			logbackConfigFile = new File(upgradeDir, "conf/logback.xml");
+			logbackConfig = FileUtils.readFileToString(logbackConfigFile, StandardCharsets.UTF_8);
+			logbackConfig = StringUtils.replace(logbackConfig, 
+					"<triggeringPolicy class=\"ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy\"/>", 
 					"<triggeringPolicy class=\"ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy\"><maxFileSize>1MB</maxFileSize></triggeringPolicy>");
 			logbackConfig = StringUtils.replace(logbackConfig, "gitplex", "turbodev");
 			logbackConfig = StringUtils.replace(logbackConfig, "com.turbodev", "io.onedev");
 			logbackConfig = StringUtils.replace(logbackConfig, "turbodev", "onedev");
+			
+			if (!logbackConfig.contains("MaskingPatternLayout")) {
+				logbackConfig = StringUtils.replace(logbackConfig, 
+						"ch.qos.logback.classic.encoder.PatternLayoutEncoder",
+						"ch.qos.logback.core.encoder.LayoutWrappingEncoder");
+				logbackConfig = StringUtils.replace(logbackConfig, 
+						"<pattern>", 
+						"<layout class=\"io.onedev.commons.bootstrap.MaskingPatternLayout\">\n				<pattern>");
+				logbackConfig = StringUtils.replace(logbackConfig, 
+						"</pattern>", 
+						"</pattern>\n			</layout>");
+			}
+			
 			FileUtils.writeStringToFile(logbackConfigFile, logbackConfig, StandardCharsets.UTF_8);
 			
 			FileUtils.copyFile(new File(Bootstrap.installDir, "conf/wrapper-license.conf"), 
 					new File(upgradeDir, "conf/wrapper-license.conf"));
 			FileUtils.copyFile(new File(Bootstrap.installDir, "readme.txt"), new File(upgradeDir, "readme.txt"));
 			FileUtils.copyFile(new File(Bootstrap.installDir, "license.txt"), new File(upgradeDir, "license.txt"));
-			FileUtils.copyFile(new File(Bootstrap.installDir, "version.txt"), new File(upgradeDir, "version.txt"));
-			FileUtils.copyFile(new File(Bootstrap.installDir, "build.txt"), new File(upgradeDir, "build.txt"));
+			FileUtils.copyFile(new File(Bootstrap.installDir, RELEASE_PROPS_FILE), new File(upgradeDir, RELEASE_PROPS_FILE));
 
 			FileUtils.createDir(new File(Bootstrap.installDir, INCOMPATIBILITIES).getParentFile());
 			if (new File(upgradeDir, INCOMPATIBILITIES_SINCE_UPGRADED_VERSION).exists())

@@ -6,11 +6,14 @@ import java.util.Optional;
 import javax.annotation.Nullable;
 
 import io.onedev.server.OneDev;
+import io.onedev.server.entitymanager.UrlManager;
+import io.onedev.server.mail.MailManager;
 import io.onedev.server.markdown.MarkdownManager;
 import io.onedev.server.model.Project;
 import io.onedev.server.model.User;
 import io.onedev.server.model.support.LastUpdate;
 import io.onedev.server.notification.ActivityDetail;
+import io.onedev.server.persistence.dao.Dao;
 
 public abstract class ProjectEvent extends Event {
 
@@ -77,9 +80,12 @@ public abstract class ProjectEvent extends Event {
 	
 	@Nullable
 	public String getTextBody() {
-		ActivityDetail activityDetail = getActivityDetail();
 		String markdown = getMarkdown();
+		MailManager mailManager = OneDev.getInstance(MailManager.class);
+		if (markdown != null && mailManager.isMailContent(markdown))  
+			markdown = mailManager.toPlainText(markdown);
 		
+		ActivityDetail activityDetail = getActivityDetail();
 		if (activityDetail != null && markdown != null)
 			return activityDetail.getTextVersion() + "\n\n" + markdown;
 		else if (activityDetail != null)
@@ -105,4 +111,9 @@ public abstract class ProjectEvent extends Event {
 			return null;
 	}
 	
+	public abstract ProjectEvent cloneIn(Dao dao);
+	
+	public String getUrl() {
+		return OneDev.getInstance(UrlManager.class).urlFor(project);
+	}
 }

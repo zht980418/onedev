@@ -2,8 +2,6 @@ package io.onedev.server.web.component.pullrequest.list;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
@@ -68,7 +66,6 @@ import io.onedev.server.web.WebSession;
 import io.onedev.server.web.asset.emoji.Emojis;
 import io.onedev.server.web.behavior.NoRecordsBehavior;
 import io.onedev.server.web.behavior.PullRequestQueryBehavior;
-import io.onedev.server.web.component.branch.BranchLink;
 import io.onedev.server.web.component.datatable.selectioncolumn.SelectionColumn;
 import io.onedev.server.web.component.floating.FloatingPanel;
 import io.onedev.server.web.component.link.ActionablePageLink;
@@ -153,7 +150,7 @@ public abstract class PullRequestListPanel extends Panel {
 	@Nullable
 	private Object parse(@Nullable String queryString, PullRequestQuery baseQuery) {
 		try {
-			return PullRequestQuery.merge(baseQuery, PullRequestQuery.parse(getProject(), queryString));
+			return PullRequestQuery.merge(baseQuery, PullRequestQuery.parse(getProject(), queryString, true));
 		} catch (ExplicitException e) {
 			error(e.getMessage());
 			return null;
@@ -584,7 +581,7 @@ public abstract class PullRequestListPanel extends Panel {
 				return getProject();
 			}
 			
-		}) {
+		}, true, true) {
 			
 			@Override
 			protected void onInput(AjaxRequestTarget target, String inputContent) {
@@ -630,20 +627,13 @@ public abstract class PullRequestListPanel extends Panel {
 	
 				@Override
 				protected Component newContent(String id, FloatingPanel dropdown) {
-					return new ProjectSelector(id, new LoadableDetachableModel<Collection<Project>>() {
+					return new ProjectSelector(id, new LoadableDetachableModel<List<Project>>() {
 	
 						@Override
-						protected Collection<Project> load() {
-							List<Project> projects = new ArrayList<>(OneDev.getInstance(ProjectManager.class)
-									.getPermittedProjects(new ReadCode()));
-							Collections.sort(projects, new Comparator<Project>() {
-	
-								@Override
-								public int compare(Project o1, Project o2) {
-									return o1.getPath().compareTo(o2.getPath());
-								}
-								
-							});
+						protected List<Project> load() {
+							ProjectManager projectManager = OneDev.getInstance(ProjectManager.class);
+							List<Project> projects = new ArrayList<Project>(projectManager.getPermittedProjects(new ReadCode()));
+							projects.sort(projectManager.cloneCache().comparingPath());
 							return projects;
 						}
 						
@@ -779,22 +769,6 @@ public abstract class PullRequestListPanel extends Panel {
 				fragment.add(new Label("comments", request.getCommentCount()));
 				
 				fragment.add(new RequestStatusBadge("status", rowModel));
-				
-				fragment.add(new BranchLink("target", request.getTarget()));
-
-				if (request.getSource() != null) { 
-					fragment.add(new BranchLink("source", request.getSource()));
-				} else { 
-					fragment.add(new Label("source", "<i>unknown</i>") {
-
-						@Override
-						protected void onComponentTag(ComponentTag tag) {
-							super.onComponentTag(tag);
-							tag.setName("span");
-						}
-						
-					}.setEscapeModelStrings(false));
-				}
 				
 				LastUpdate lastUpdate = request.getLastUpdate();
 				if (lastUpdate.getUser() != null) 

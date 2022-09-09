@@ -1,6 +1,5 @@
 package io.onedev.server.web.component.suggestionapply;
 
-import java.io.Serializable;
 import java.util.List;
 
 import javax.annotation.Nullable;
@@ -28,7 +27,6 @@ import io.onedev.server.model.support.CompareContext;
 import io.onedev.server.model.support.Mark;
 import io.onedev.server.model.support.administration.GpgSetting;
 import io.onedev.server.persistence.SessionManager;
-import io.onedev.server.persistence.TransactionManager;
 import io.onedev.server.security.SecurityUtils;
 import io.onedev.server.util.ProjectAndRevision;
 import io.onedev.server.web.component.beaneditmodal.BeanEditModalPanel;
@@ -37,19 +35,18 @@ import io.onedev.server.web.page.project.compare.RevisionComparePage;
 import io.onedev.server.web.page.project.pullrequests.detail.changes.PullRequestChangesPage;
 
 @SuppressWarnings("serial")
-public abstract class SuggestionApplyModalPanel extends BeanEditModalPanel {
+public abstract class SuggestionApplyModalPanel extends BeanEditModalPanel<SuggestionApplyBean> {
 
 	public SuggestionApplyModalPanel(IPartialPageRequestHandler handler, SuggestionApplyBean bean) {
 		super(handler, bean);
 	}
 
 	@Override
-	protected void onSave(AjaxRequestTarget target, Serializable bean) {
-		SuggestionApplyBean suggestionApplyBean = (SuggestionApplyBean) bean;
+	protected void onSave(AjaxRequestTarget target, SuggestionApplyBean bean) {
 		CodeComment comment = getComment();
 		BlobEdits blobEdits = new BlobEdits();
 		
-		String branch = suggestionApplyBean.getBranch();
+		String branch = bean.getBranch();
 		
 		Project project;
 		PullRequest request = getPullRequest();
@@ -62,7 +59,7 @@ public abstract class SuggestionApplyModalPanel extends BeanEditModalPanel {
 			ObjectId commitId = project.getObjectId(branch, true);
 			try {
 				blobEdits.applySuggestion(project, mark, getSuggestion(), commitId);
-				String commitMessage = suggestionApplyBean.getCommitMessage();
+				String commitMessage = bean.getCommitMessage();
 				GpgSetting gpgSetting = OneDev.getInstance(SettingManager.class).getGpgSetting();
 				
 				ObjectId newCommitId = blobEdits.commit(
@@ -89,21 +86,14 @@ public abstract class SuggestionApplyModalPanel extends BeanEditModalPanel {
 				
 				Long projectId = project.getId();
 				String refName = GitUtils.branch2ref(branch);
-				OneDev.getInstance(TransactionManager.class).runAfterCommit(new Runnable() {
+				OneDev.getInstance(SessionManager.class).runAsyncAfterCommit(new Runnable() {
 
 					@Override
 					public void run() {
-						OneDev.getInstance(SessionManager.class).runAsync(new Runnable() {
-
-							@Override
-							public void run() {
-								Project project = OneDev.getInstance(ProjectManager.class).load(projectId);
-								project.cacheObjectId(branch, newCommitId);
-								RefUpdated refUpdated = new RefUpdated(project, refName, commitId, newCommitId);
-								OneDev.getInstance(ListenerRegistry.class).post(refUpdated);
-							}
-							
-						});
+						Project project = OneDev.getInstance(ProjectManager.class).load(projectId);
+						project.cacheObjectId(branch, newCommitId);
+						RefUpdated refUpdated = new RefUpdated(project, refName, commitId, newCommitId);
+						OneDev.getInstance(ListenerRegistry.class).post(refUpdated);
 					}
 					
 				});

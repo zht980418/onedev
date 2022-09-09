@@ -47,7 +47,6 @@ import org.apache.wicket.Application;
 import org.apache.wicket.protocol.http.WicketFilter;
 import org.apache.wicket.protocol.http.WicketServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.eclipse.jetty.websocket.api.WebSocketPolicy;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
 import org.hibernate.CallbackException;
@@ -101,12 +100,16 @@ import io.onedev.server.entitymanager.CodeCommentQueryPersonalizationManager;
 import io.onedev.server.entitymanager.CodeCommentReplyManager;
 import io.onedev.server.entitymanager.CodeCommentStatusChangeManager;
 import io.onedev.server.entitymanager.CommitQueryPersonalizationManager;
-import io.onedev.server.entitymanager.IssueAuthorizationManager;
+import io.onedev.server.entitymanager.DashboardGroupShareManager;
+import io.onedev.server.entitymanager.DashboardManager;
+import io.onedev.server.entitymanager.DashboardUserShareManager;
+import io.onedev.server.entitymanager.DashboardVisitManager;
 import io.onedev.server.entitymanager.EmailAddressManager;
 import io.onedev.server.entitymanager.GitLfsLockManager;
 import io.onedev.server.entitymanager.GpgKeyManager;
 import io.onedev.server.entitymanager.GroupAuthorizationManager;
 import io.onedev.server.entitymanager.GroupManager;
+import io.onedev.server.entitymanager.IssueAuthorizationManager;
 import io.onedev.server.entitymanager.IssueChangeManager;
 import io.onedev.server.entitymanager.IssueCommentManager;
 import io.onedev.server.entitymanager.IssueFieldManager;
@@ -149,12 +152,16 @@ import io.onedev.server.entitymanager.impl.DefaultCodeCommentQueryPersonalizatio
 import io.onedev.server.entitymanager.impl.DefaultCodeCommentReplyManager;
 import io.onedev.server.entitymanager.impl.DefaultCodeCommentStatusChangeManager;
 import io.onedev.server.entitymanager.impl.DefaultCommitQueryPersonalizationManager;
-import io.onedev.server.entitymanager.impl.DefaultIssueAuthorizationManager;
+import io.onedev.server.entitymanager.impl.DefaultDashboardGroupShareManager;
+import io.onedev.server.entitymanager.impl.DefaultDashboardManager;
+import io.onedev.server.entitymanager.impl.DefaultDashboardUserShareManager;
+import io.onedev.server.entitymanager.impl.DefaultDashboardVisitManager;
 import io.onedev.server.entitymanager.impl.DefaultEmailAddressManager;
 import io.onedev.server.entitymanager.impl.DefaultGitLfsLockManager;
 import io.onedev.server.entitymanager.impl.DefaultGpgKeyManager;
 import io.onedev.server.entitymanager.impl.DefaultGroupAuthorizationManager;
 import io.onedev.server.entitymanager.impl.DefaultGroupManager;
+import io.onedev.server.entitymanager.impl.DefaultIssueAuthorizationManager;
 import io.onedev.server.entitymanager.impl.DefaultIssueChangeManager;
 import io.onedev.server.entitymanager.impl.DefaultIssueCommentManager;
 import io.onedev.server.entitymanager.impl.DefaultIssueFieldManager;
@@ -206,6 +213,8 @@ import io.onedev.server.infomanager.PullRequestInfoManager;
 import io.onedev.server.infomanager.UserInfoManager;
 import io.onedev.server.job.resource.DefaultResourceManager;
 import io.onedev.server.job.resource.ResourceManager;
+import io.onedev.server.mail.DefaultMailManager;
+import io.onedev.server.mail.MailManager;
 import io.onedev.server.maintenance.ApplyDatabaseConstraints;
 import io.onedev.server.maintenance.BackupDatabase;
 import io.onedev.server.maintenance.CheckDataVersion;
@@ -224,9 +233,7 @@ import io.onedev.server.model.support.administration.authenticator.Authenticator
 import io.onedev.server.notification.BuildNotificationManager;
 import io.onedev.server.notification.CodeCommentNotificationManager;
 import io.onedev.server.notification.CommitNotificationManager;
-import io.onedev.server.notification.DefaultMailManager;
 import io.onedev.server.notification.IssueNotificationManager;
-import io.onedev.server.notification.MailManager;
 import io.onedev.server.notification.PullRequestNotificationManager;
 import io.onedev.server.notification.WebHookManager;
 import io.onedev.server.persistence.DefaultIdManager;
@@ -342,7 +349,6 @@ import io.onedev.server.web.websocket.DefaultWebSocketManager;
 import io.onedev.server.web.websocket.IssueEventBroadcaster;
 import io.onedev.server.web.websocket.PullRequestEventBroadcaster;
 import io.onedev.server.web.websocket.WebSocketManager;
-import io.onedev.server.web.websocket.WebSocketPolicyProvider;
 
 /**
  * NOTE: Do not forget to rename moduleClass property defined in the pom if you've renamed this class.
@@ -458,6 +464,10 @@ public class CoreModule extends AbstractPluginModule {
 		bind(CodeCommentTextManager.class).to(DefaultCodeCommentTextManager.class);
 		bind(PendingSuggestionApplyManager.class).to(DefaultPendingSuggestionApplyManager.class);
 		bind(IssueAuthorizationManager.class).to(DefaultIssueAuthorizationManager.class);
+		bind(DashboardManager.class).to(DefaultDashboardManager.class);
+		bind(DashboardUserShareManager.class).to(DefaultDashboardUserShareManager.class);
+		bind(DashboardGroupShareManager.class).to(DefaultDashboardGroupShareManager.class);
+		bind(DashboardVisitManager.class).to(DefaultDashboardVisitManager.class);
 		
 		bind(WebHookManager.class);
 		
@@ -651,7 +661,6 @@ public class CoreModule extends AbstractPluginModule {
 	private void configureWeb() {
 		bind(WicketServlet.class).to(DefaultWicketServlet.class);
 		bind(WicketFilter.class).to(DefaultWicketFilter.class);
-		bind(WebSocketPolicy.class).toProvider(WebSocketPolicyProvider.class);
 		bind(EditSupportRegistry.class).to(DefaultEditSupportRegistry.class);
 		bind(WebSocketManager.class).to(DefaultWebSocketManager.class);
 
@@ -697,7 +706,7 @@ public class CoreModule extends AbstractPluginModule {
 		contributeFromPackage(ExceptionHandler.class, UnauthenticatedExceptionHandler.class);
 		contributeFromPackage(ExceptionHandler.class, ConstraintViolationExceptionHandler.class);
 		contributeFromPackage(ExceptionHandler.class, PageExpiredExceptionHandler.class);
-
+		
 		bind(UrlManager.class).to(DefaultUrlManager.class);
 		bind(CodeCommentEventBroadcaster.class);
 		bind(PullRequestEventBroadcaster.class);

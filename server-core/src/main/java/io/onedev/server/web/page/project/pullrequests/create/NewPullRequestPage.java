@@ -1,5 +1,6 @@
 package io.onedev.server.web.page.project.pullrequests.create;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -39,6 +40,10 @@ import org.apache.wicket.model.LoadableDetachableModel;
 import org.apache.wicket.model.Model;
 import org.apache.wicket.request.cycle.RequestCycle;
 import org.apache.wicket.request.mapper.parameter.PageParameters;
+import org.apache.wicket.validation.IErrorMessageSource;
+import org.apache.wicket.validation.IValidatable;
+import org.apache.wicket.validation.IValidationError;
+import org.apache.wicket.validation.IValidator;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.joda.time.DateTime;
@@ -55,6 +60,7 @@ import io.onedev.server.entitymanager.CodeCommentManager;
 import io.onedev.server.entitymanager.CodeCommentReplyManager;
 import io.onedev.server.entitymanager.CodeCommentStatusChangeManager;
 import io.onedev.server.entitymanager.PullRequestManager;
+import io.onedev.server.entitymanager.UserManager;
 import io.onedev.server.git.GitUtils;
 import io.onedev.server.git.RefInfo;
 import io.onedev.server.infomanager.CommitInfoManager;
@@ -182,6 +188,10 @@ public class NewPullRequestPage extends ProjectPage implements RevisionDiff.Anno
 		return OneDev.getInstance(PullRequestManager.class);
 	}
 	
+	private UserManager getUserManager() {
+		return OneDev.getInstance(UserManager.class);
+	}
+	
 	public NewPullRequestPage(PageParameters params) {
 		super(params);
 		
@@ -262,14 +272,13 @@ public class NewPullRequestPage extends ProjectPage implements RevisionDiff.Anno
 					assignment.setUser(SecurityUtils.getUser());
 					request.getAssignments().add(assignment);
 				} else {
-					List<User> codeWriters = new ArrayList<>(
-							SecurityUtils.getAuthorizedUsers(target.getProject(), new WriteCode()));
+					List<User> users = new ArrayList<>(getUserManager().getAuthorizedUsers(target.getProject(), new WriteCode()));
 					OneDev.getInstance(CommitInfoManager.class).sortUsersByContribution(
-							codeWriters, target.getProject(), update.getChangedFiles());
-					if (!codeWriters.isEmpty()) {
+							users, target.getProject(), update.getChangedFiles());
+					if (!users.isEmpty()) {
 						PullRequestAssignment assignment = new PullRequestAssignment();
 						assignment.setRequest(request);
-						assignment.setUser(codeWriters.iterator().next());
+						assignment.setUser(users.iterator().next());
 						request.getAssignments().add(assignment);
 					}
 				}
@@ -732,7 +741,7 @@ public class NewPullRequestPage extends ProjectPage implements RevisionDiff.Anno
 		
 		form.add(titleInput);
 
-		form.add(new CommentInput("comment", new IModel<String>() {
+		CommentInput descriptionInput = new CommentInput("description", new IModel<String>() {
 
 			@Override
 			public void detach() {
@@ -762,7 +771,36 @@ public class NewPullRequestPage extends ProjectPage implements RevisionDiff.Anno
 				return target.getProject();
 			}
 			
+		};
+		descriptionInput.add(new IValidator<String>() {
+
+			@Override
+			public void validate(IValidatable<String> validatable) {
+				if (validatable.getValue().length() > PullRequest.MAX_DESCRIPTION_LEN) {
+					validatable.error(new IValidationError() {
+						
+						@Override
+						public Serializable getErrorMessage(IErrorMessageSource messageSource) {
+							return "Description too long";
+						}
+						
+					});
+				}
+			}
+			
 		});
+		
+		descriptionInput.add(AttributeAppender.append("class", new AbstractReadOnlyModel<String>() {
+
+			@Override
+			public String getObject() {
+				return !descriptionInput.isValid()?" is-invalid":"";
+			}
+			
+		}));
+		
+		form.add(descriptionInput);
+		form.add(new FencedFeedbackPanel("descriptionFeedback", descriptionInput));
 
 		form.add(newMergeStrategyContainer());
 		form.add(new ReviewListPanel("reviewers") {

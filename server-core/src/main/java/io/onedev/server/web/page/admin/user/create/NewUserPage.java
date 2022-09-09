@@ -1,15 +1,6 @@
 package io.onedev.server.web.page.admin.user.create;
 
-import com.google.common.collect.Sets;
-import io.onedev.server.entitymanager.ProjectManager;
-import io.onedev.server.model.Project;
-import io.onedev.server.web.page.project.blob.ProjectBlobPage;
-import io.onedev.server.web.page.project.children.ProjectChildrenPage;
-import io.onedev.server.web.page.project.issues.list.ProjectIssueListPage;
-import io.onedev.server.web.page.project.setting.general.DefaultRoleBean;
-import io.onedev.server.web.page.project.setting.general.ParentBean;
 import org.apache.shiro.authc.credential.PasswordService;
-import org.apache.shiro.authz.UnauthorizedException;
 import org.apache.wicket.Component;
 import org.apache.wicket.Session;
 import org.apache.wicket.markup.head.CssHeaderItem;
@@ -36,26 +27,15 @@ import io.onedev.server.web.page.admin.user.UserCssResourceReference;
 import io.onedev.server.web.page.admin.user.membership.UserMembershipsPage;
 import io.onedev.server.web.util.editablebean.NewUserBean;
 
-import java.util.Collection;
-
-import static io.onedev.server.model.Project.PROP_CODE_MANAGEMENT;
-import static io.onedev.server.model.Project.PROP_DESCRIPTION;
-import static io.onedev.server.model.Project.PROP_ISSUE_MANAGEMENT;
-import static io.onedev.server.model.Project.PROP_NAME;
-import static io.onedev.server.model.Project.PROP_FORK_PERMISSION;
-
 @SuppressWarnings("serial")
 public class NewUserPage extends AdministrationPage {
-	private static final String PARAM_PARENT = "parent";
 
-	private final Long parentId;
 	private NewUserBean newUserBean = new NewUserBean();
 	
 	private boolean continueToAdd;
 	
 	public NewUserPage(PageParameters params) {
 		super(params);
-		parentId = params.get(PARAM_PARENT).toOptionalLong();
 	}
 
 	@Override
@@ -64,22 +44,6 @@ public class NewUserPage extends AdministrationPage {
 		
 		BeanEditor editor = BeanContext.edit("editor", newUserBean);
 		
-//		demand 3
-//		Project editProject = new Project();
-//		
-//		Collection<String> properties = Sets.newHashSet(PROP_NAME, PROP_DESCRIPTION,
-//				PROP_CODE_MANAGEMENT, PROP_ISSUE_MANAGEMENT,PROP_FORK_PERMISSION);
-//		
-//		DefaultRoleBean defaultRoleBean = new DefaultRoleBean();
-//		ParentBean parentBean = new ParentBean();
-//		if(parentBean!=null)
-//			parentBean.setParentPath(getProjectManager().load(parentId).getPath());
-//		BeanEditor projectEditor = BeanContext.edit("projectEditor",editProject,properties,false);
-//		BeanEditor parentEditor = BeanContext.edit("parentEditor",parentBean);
-//		if(parentId!=null){
-//			parentEditor.setVisible(false);
-//		}
-//		
 		Form<?> form = new Form<Void>("form") {
 
 			@Override
@@ -104,33 +68,6 @@ public class NewUserPage extends AdministrationPage {
 					user.setName(newUserBean.getName());
 					user.setFullName(newUserBean.getFullName());
 					user.setPassword(AppLoader.getInstance(PasswordService.class).encryptPassword(newUserBean.getPassword()));
-//					demand 3 set personal project
-//					try {
-//						editProject.setName(user.getName()+"-personal-project");
-//						String projectPath = editProject.getName();
-//						if(parentBean.getParentPath()!=null)
-//							projectPath = parentBean.getParentPath()+"/"+projectPath;
-//						Project newProject = getProjectManager().initialize(projectPath);
-//						newProject.setDescription("this is the personal project belongs to user"+user.getName());
-//						newProject.setCodeManagement(true);
-//						newProject.setIssueManagement(true);
-//						newProject.setForkPermission(false);
-//						newProject.setDefaultRole(defaultRoleBean.getRole());
-//						getProjectManager().create(newProject);
-//						Session.get().success("New Personal project created");
-//						if(newProject.isCodeManagement())
-//							setResponsePage(ProjectBlobPage.class,ProjectBlobPage.paramsOf(newProject));
-//						else if(newProject.isIssueManagement())
-//							setResponsePage(ProjectIssueListPage.class,ProjectIssueListPage.paramsOf(newProject));
-//						else 
-//							setResponsePage(ProjectChildrenPage.class,ProjectChildrenPage.paramsOf(newProject));
-//					} catch (UnauthorizedException e){
-//						if(parentEditor.isVisible())
-//							parentEditor.error(new Path(new PathNode.Named("parentPath")),e.getMessage());
-//						else 
-//							throw e;
-//					}
-					
 					
 					EmailAddress emailAddress = new EmailAddress();
 					emailAddress.setValue(newUserBean.getEmailAddress());
@@ -190,7 +127,4 @@ public class NewUserPage extends AdministrationPage {
 		return new Label(componentId, "Create User");
 	}
 
-	private ProjectManager getProjectManager() {
-		return OneDev.getInstance(ProjectManager.class);
-	}
 }

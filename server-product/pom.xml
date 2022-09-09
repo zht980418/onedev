@@ -7,8 +7,7 @@
 	<parent>
 		<groupId>io.onedev</groupId>
 		<artifactId>server</artifactId>
-		<version>7.4.0</version>
-<!--		<relativePath></relativePath>-->
+		<version>7.5.0</version>
 	</parent>
 	<dependencies>
 		<dependency>
@@ -16,10 +15,6 @@
 			<artifactId>server-core</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-<!--		<dependency>-->
-<!--			<groupId>org.example</groupId>-->
-<!--			<artifactId>custom-bootstrap</artifactId>-->
-<!--		</dependency>-->
 		<dependency>
 			<groupId>io.onedev</groupId>
 			<artifactId>server-plugin-report-jest</artifactId>
@@ -132,6 +127,11 @@
 		</dependency>
 		<dependency>
 			<groupId>io.onedev</groupId>
+			<artifactId>server-plugin-import-bitbucketcloud</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.onedev</groupId>
 			<artifactId>server-plugin-import-youtrack</artifactId>
 			<version>${project.version}</version>
 		</dependency>
@@ -142,12 +142,17 @@
 		</dependency>
 		<dependency>
 			<groupId>io.onedev</groupId>
-			<artifactId>server-plugin-import-bitbucketcloud</artifactId>
+			<artifactId>server-plugin-import-url</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>io.onedev</groupId>
 			<artifactId>server-plugin-sso-discord</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.onedev</groupId>
+			<artifactId>server-plugin-notification-slack</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		

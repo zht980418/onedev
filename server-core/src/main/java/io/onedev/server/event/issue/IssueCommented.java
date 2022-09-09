@@ -2,7 +2,10 @@ package io.onedev.server.event.issue;
 
 import java.util.Collection;
 
+import io.onedev.server.OneDev;
+import io.onedev.server.entitymanager.UrlManager;
 import io.onedev.server.model.IssueComment;
+import io.onedev.server.persistence.dao.Dao;
 
 public class IssueCommented extends IssueEvent {
 
@@ -39,4 +42,14 @@ public class IssueCommented extends IssueEvent {
 		return "commented";
 	}
 
+	@Override
+	public IssueEvent cloneIn(Dao dao) {
+		return new IssueCommented(dao.load(IssueComment.class, comment.getId()), notifiedEmailAddresses);
+	}
+
+	@Override
+	public String getUrl() {
+		return OneDev.getInstance(UrlManager.class).urlFor(getComment());
+	}
+	
 }

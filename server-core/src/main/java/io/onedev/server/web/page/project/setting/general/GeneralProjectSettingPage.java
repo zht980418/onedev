@@ -4,7 +4,6 @@ import static io.onedev.server.model.Project.PROP_CODE_MANAGEMENT;
 import static io.onedev.server.model.Project.PROP_DESCRIPTION;
 import static io.onedev.server.model.Project.PROP_ISSUE_MANAGEMENT;
 import static io.onedev.server.model.Project.PROP_NAME;
-import static io.onedev.server.model.Project.PROP_FORK_PERMISSION;
 
 import java.io.Serializable;
 import java.util.Collection;
@@ -52,7 +51,7 @@ public class GeneralProjectSettingPage extends ProjectSettingPage {
 		super.onInitialize();
 		
 		Collection<String> properties = Sets.newHashSet(PROP_NAME, PROP_DESCRIPTION, 
-				PROP_CODE_MANAGEMENT, PROP_ISSUE_MANAGEMENT,PROP_FORK_PERMISSION);
+				PROP_CODE_MANAGEMENT, PROP_ISSUE_MANAGEMENT);
 		
 		DefaultRoleBean defaultRoleBean = new DefaultRoleBean();
 		defaultRoleBean.setRole(getProject().getDefaultRole());

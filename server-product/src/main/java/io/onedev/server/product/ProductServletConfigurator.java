@@ -17,7 +17,10 @@ import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.glassfish.jersey.servlet.ServletContainer;
 
+import com.google.common.collect.Lists;
+
 import io.onedev.commons.bootstrap.Bootstrap;
+import io.onedev.commons.utils.FileUtils;
 import io.onedev.server.ServerSocketServlet;
 import io.onedev.server.git.GitFilter;
 import io.onedev.server.git.GitLfsFilter;
@@ -25,7 +28,6 @@ import io.onedev.server.git.GoGetFilter;
 import io.onedev.server.git.hookcallback.GitPostReceiveCallback;
 import io.onedev.server.git.hookcallback.GitPreReceiveCallback;
 import io.onedev.server.security.DefaultWebEnvironment;
-import io.onedev.server.util.ServerConfig;
 import io.onedev.server.util.jetty.ClasspathAssetServlet;
 import io.onedev.server.util.jetty.FileAssetServlet;
 import io.onedev.server.util.jetty.ServletConfigurator;
@@ -35,7 +37,7 @@ import io.onedev.server.web.websocket.WebSocketManager;
 
 public class ProductServletConfigurator implements ServletConfigurator {
 
-	private final ServerConfig serverConfig;
+	private static final int SESSION_TIMEOUT = 300;
 	
 	private final ShiroFilter shiroFilter;
 	
@@ -58,12 +60,11 @@ public class ProductServletConfigurator implements ServletConfigurator {
 	private final ServerSocketServlet serverServlet;
 	
 	@Inject
-	public ProductServletConfigurator(ServerConfig serverConfig, ShiroFilter shiroFilter, 
+	public ProductServletConfigurator(ShiroFilter shiroFilter, 
 			GitFilter gitFilter, GitLfsFilter gitLfsFilter, GitPreReceiveCallback preReceiveServlet, 
 			GitPostReceiveCallback postReceiveServlet, WicketServlet wicketServlet, 
 			WebSocketManager webSocketManager, ServletContainer jerseyServlet, 
 			ServerSocketServlet serverServlet, GoGetFilter goGetFilter) {
-		this.serverConfig = serverConfig;
 		this.shiroFilter = shiroFilter;
         this.gitFilter = gitFilter;
         this.gitLfsFilter = gitLfsFilter;
@@ -80,7 +81,7 @@ public class ProductServletConfigurator implements ServletConfigurator {
 	public void configure(ServletContextHandler context) {
 		context.setContextPath("/");
 		
-		context.getSessionHandler().setMaxInactiveInterval(serverConfig.getSessionTimeout());
+		context.getSessionHandler().setMaxInactiveInterval(SESSION_TIMEOUT);
 		
 		context.setInitParameter(EnvironmentLoader.ENVIRONMENT_CLASS_PARAM, DefaultWebEnvironment.class.getName());
 		context.addEventListener(new EnvironmentLoaderListener());
@@ -121,10 +122,15 @@ public class ProductServletConfigurator implements ServletConfigurator {
 		 * to hold site specific web assets.   
 		 */
 		File assetsDir = new File(Bootstrap.getSiteDir(), "assets");
-		ServletHolder fileServletHolder = new ServletHolder(new FileAssetServlet(assetsDir));
-		context.addServlet(fileServletHolder, "/site/*");
+		ServletHolder assetsServletHolder = new ServletHolder(new FileAssetServlet(assetsDir));
+		context.addServlet(assetsServletHolder, "/site/*");
 		
-		context.addServlet(fileServletHolder, "/robots.txt");
+		File rootAssetsDir = new File(Bootstrap.getSiteDir(), "assets/root");
+		ServletHolder rootAssetsServletHolder = new ServletHolder(new FileAssetServlet(rootAssetsDir));
+		for (File file: FileUtils.listFiles(rootAssetsDir, Lists.newArrayList("**"), Lists.newArrayList())) {
+			String path = file.getAbsolutePath().substring(rootAssetsDir.getAbsolutePath().length());
+			context.addServlet(rootAssetsServletHolder, path.replace('\\', '/'));
+		}
 		
 		context.addServlet(new ServletHolder(jerseyServlet), "/api/*");	
 		context.addServlet(new ServletHolder(serverServlet), "/server");

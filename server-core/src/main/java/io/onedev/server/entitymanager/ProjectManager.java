@@ -16,6 +16,7 @@ import io.onedev.server.persistence.dao.EntityManager;
 import io.onedev.server.search.entity.EntityQuery;
 import io.onedev.server.util.criteria.Criteria;
 import io.onedev.server.util.facade.ProjectFacade;
+import io.onedev.server.util.facade.ProjectCache;
 
 public interface ProjectManager extends EntityManager<Project> {
 	
@@ -61,8 +62,6 @@ public interface ProjectManager extends EntityManager<Project> {
 	
 	Repository getRepository(Project project);
 	
-	Collection<Project> getPermittedProjects(Permission permission);
-	
 	List<Project> query(EntityQuery<Project> query, int firstResult, int maxResults);
 	
 	int count(Criteria<Project> criteria);
@@ -75,8 +74,12 @@ public interface ProjectManager extends EntityManager<Project> {
 
 	void delete(Collection<Project> projects);
 	
-	Collection<Long> getProjectIds();
+	Collection<Long> getIds();
 	
 	Collection<Long> getSubtreeIds(Long projectId);
+	
+	Collection<Project> getPermittedProjects(Permission permission);
+	
+	ProjectCache cloneCache();
 	
 }

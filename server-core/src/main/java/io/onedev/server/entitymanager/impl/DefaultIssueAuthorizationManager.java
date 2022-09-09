@@ -6,8 +6,8 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import io.onedev.server.entitymanager.IssueAuthorizationManager;
-import io.onedev.server.model.IssueAuthorization;
 import io.onedev.server.model.Issue;
+import io.onedev.server.model.IssueAuthorization;
 import io.onedev.server.model.User;
 import io.onedev.server.persistence.annotation.Transactional;
 import io.onedev.server.persistence.dao.BaseEntityManager;
@@ -46,8 +46,9 @@ public class DefaultIssueAuthorizationManager extends BaseEntityManager<IssueAut
 			IssueAuthorization authorization = new IssueAuthorization();
 			authorization.setIssue(issue);
 			authorization.setUser(user);
+			issue.getAuthorizations().add(authorization);
 			save(authorization);
 		}
 	}
-	
+
 }

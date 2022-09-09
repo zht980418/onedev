@@ -45,8 +45,8 @@ import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 import javax.validation.Validator;
 
-import org.apache.commons.collections4.map.ReferenceMap;
 import org.apache.commons.collections4.map.AbstractReferenceMap.ReferenceStrength;
+import org.apache.commons.collections4.map.ReferenceMap;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.shiro.authz.Permission;
 import org.apache.tika.mime.MediaType;
@@ -141,7 +141,6 @@ import io.onedev.server.model.support.issue.ProjectIssueSetting;
 import io.onedev.server.model.support.pullrequest.NamedPullRequestQuery;
 import io.onedev.server.model.support.pullrequest.ProjectPullRequestSetting;
 import io.onedev.server.persistence.SessionManager;
-import io.onedev.server.persistence.TransactionManager;
 import io.onedev.server.rest.annotation.Api;
 import io.onedev.server.security.SecurityUtils;
 import io.onedev.server.storage.AttachmentStorageManager;
@@ -202,8 +201,6 @@ public class Project extends AbstractEntity {
 	
 	public static final String PROP_DESCRIPTION = "description";
 	
-	public static final String PROP_ID = "id";
-	
 	public static final String PROP_FORKED_FROM = "forkedFrom";
 	
 	public static final String PROP_PARENT = "parent";
@@ -215,8 +212,6 @@ public class Project extends AbstractEntity {
 	public static final String PROP_CODE_MANAGEMENT = "codeManagement";
 	
 	public static final String PROP_ISSUE_MANAGEMENT = "issueManagement";
-	
-	public static final String PROP_FORK_PERMISSION = "forkPermission";
 	
 	public static final String NAME_SERVICE_DESK_NAME = "Service Desk Name";
 	
@@ -233,7 +228,6 @@ public class Project extends AbstractEntity {
 			NAME_UPDATE_DATE, PROP_UPDATE_DATE);
 	
 	private static final int LAST_COMMITS_CACHE_THRESHOLD = 1000;
-	
 	
 	static ThreadLocal<Stack<Project>> stack =  new ThreadLocal<Stack<Project>>() {
 
@@ -348,15 +342,12 @@ public class Project extends AbstractEntity {
 	private Collection<BuildQueryPersonalization> buildQueryPersonalizations = new ArrayList<>();
 	
 	@OneToMany(mappedBy="project", cascade=CascadeType.REMOVE)
+	@Cache(usage=CacheConcurrencyStrategy.READ_WRITE)
 	private Collection<Milestone> milestones = new ArrayList<>();
 	
 	private boolean codeManagement = true;
 	
 	private boolean issueManagement = true;
-	
-	//	demand2: whether the project could be forked by everyone
-	private boolean forkPermission = true;
-	
 	
 	// SQL Server does not allow duplicate null values for unique column. So we use 
 	// special prefix to indicate null
@@ -708,7 +699,8 @@ public class Project extends AbstractEntity {
 	}
 	
 	public ProjectFacade getFacade() {
-		return new ProjectFacade(getId(), getName(), getServiceDeskName(), Project.idOf(getParent()));
+		return new ProjectFacade(getId(), getName(), getServiceDeskName(), isIssueManagement(), 
+				Role.idOf(getDefaultRole()), Project.idOf(getParent()));
 	}
 	
 	/**
@@ -1118,20 +1110,13 @@ public class Project extends AbstractEntity {
 			cacheObjectId(refName, commit);
 			
 	    	ObjectId commitId = commit.copy();
-	    	OneDev.getInstance(TransactionManager.class).runAfterCommit(new Runnable() {
+	    	OneDev.getInstance(SessionManager.class).runAsyncAfterCommit(new Runnable() {
 
 				@Override
 				public void run() {
-			    	OneDev.getInstance(SessionManager.class).runAsync(new Runnable() {
-
-						@Override
-						public void run() {
-							Project project = OneDev.getInstance(ProjectManager.class).load(getId());
-							OneDev.getInstance(ListenerRegistry.class).post(
-									new RefUpdated(project, refName, ObjectId.zeroId(), commitId));
-						}
-			    		
-			    	});
+					Project project = OneDev.getInstance(ProjectManager.class).load(getId());
+					OneDev.getInstance(ListenerRegistry.class).post(
+							new RefUpdated(project, refName, ObjectId.zeroId(), commitId));
 				}
 	    		
 	    	});			
@@ -1170,20 +1155,13 @@ public class Project extends AbstractEntity {
 			cacheObjectId(refName, commit);
 			
 	    	ObjectId commitId = commit.copy();
-	    	OneDev.getInstance(TransactionManager.class).runAfterCommit(new Runnable() {
+	    	OneDev.getInstance(SessionManager.class).runAsyncAfterCommit(new Runnable() {
 
 				@Override
 				public void run() {
-			    	OneDev.getInstance(SessionManager.class).runAsync(new Runnable() {
-
-						@Override
-						public void run() {
-							Project project = OneDev.getInstance(ProjectManager.class).load(getId());
-							OneDev.getInstance(ListenerRegistry.class).post(
-									new RefUpdated(project, refName, ObjectId.zeroId(), commitId));
-						}
-			    		
-			    	});
+					Project project = OneDev.getInstance(ProjectManager.class).load(getId());
+					OneDev.getInstance(ListenerRegistry.class).post(
+							new RefUpdated(project, refName, ObjectId.zeroId(), commitId));
 				}
 	    		
 	    	});			
@@ -1208,12 +1186,6 @@ public class Project extends AbstractEntity {
 	public void setCodeManagement(boolean codeManagement) {
 		this.codeManagement = codeManagement;
 	}
-
-	//	demand2: whether the project could be forked by everyone
-	@Editable(order = 275,description = "Whether or not to have fork permission for the project")
-	public  boolean isForkPermission(){ return forkPermission;}
-
-	public void setForkPermission(boolean forkPermission){ this.forkPermission = forkPermission; }
 
 	@Editable(order=300, description="Whether or not to enable issue management for the project")
 	public boolean isIssueManagement() {

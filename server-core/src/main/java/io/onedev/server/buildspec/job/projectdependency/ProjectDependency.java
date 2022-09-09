@@ -19,6 +19,7 @@ import io.onedev.server.model.Project;
 import io.onedev.server.security.SecurityUtils;
 import io.onedev.server.security.permission.AccessProject;
 import io.onedev.server.util.EditContext;
+import io.onedev.server.util.facade.ProjectCache;
 import io.onedev.server.web.editable.annotation.ChoiceProvider;
 import io.onedev.server.web.editable.annotation.Editable;
 import io.onedev.server.web.editable.annotation.Interpolative;
@@ -56,10 +57,13 @@ public class ProjectDependency implements Serializable {
 	@SuppressWarnings("unused")
 	private static List<String> getProjectChoices() {
 		List<String> choices = new ArrayList<>();
-		Project project = ((ProjectPage)WicketUtils.getPage()).getProject();
-		for (Project each: OneDev.getInstance(ProjectManager.class).getPermittedProjects(new AccessProject())) {
-			if (!each.equals(project))
-				choices.add(each.getPath());
+		Project currentProject = ((ProjectPage)WicketUtils.getPage()).getProject();
+		
+		ProjectManager projectManager = OneDev.getInstance(ProjectManager.class);
+		ProjectCache cache = projectManager.cloneCache();
+		for (Project project: projectManager.getPermittedProjects(new AccessProject())) {
+			if (!project.equals(currentProject))
+				choices.add(cache.getPath(project.getId()));
 		}
 		
 		Collections.sort(choices);

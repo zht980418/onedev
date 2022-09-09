@@ -115,9 +115,11 @@ public class DefaultPullRequestTextManager extends EntityTextManager<PullRequest
 		} else if (!SecurityUtils.isAdministrator()) {
 			Collection<Project> projects = projectManager.getPermittedProjects(new ReadCode());
 			if (!projects.isEmpty()) {
-				Collection<Long> projectIds = projects.stream().map(it->it.getId()).collect(Collectors.toList());
-				Collection<Long> allIds = projectManager.getProjectIds();
-				queryBuilder.add(Criteria.forManyValues(FIELD_PROJECT_ID, projectIds, allIds), Occur.MUST);
+				Query projectsQuery = Criteria.forManyValues(
+						FIELD_PROJECT_ID, 
+						projects.stream().map(it->it.getId()).collect(Collectors.toSet()), 
+						projectManager.getIds());
+				queryBuilder.add(projectsQuery, Occur.MUST);
 			} else {
 				return null;
 			}

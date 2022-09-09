@@ -198,6 +198,8 @@ public abstract class TaskButton extends AjaxButton {
 		
 		new ModalPanel(target) {
 			
+			private TaskResult result;
+			
 			@Override
 			protected void onClosed() {
 				super.onClosed();
@@ -208,17 +210,8 @@ public abstract class TaskButton extends AjaxButton {
 					future.cancel(true);
 					onCancelled(target);
 				} else {
-					try {
-						onCompleted(target, future != null && future.get().successful);
-					} catch (InterruptedException | ExecutionException e) {
-						throw new RuntimeException(e);
-					}
+					onCompleted(target, result != null && result.isSuccessful());
 				}
-			}
-
-			@Override
-			protected String getCssClass() {
-				return "modal-lg";
 			}
 
 			@Override
@@ -244,7 +237,8 @@ public abstract class TaskButton extends AjaxButton {
 						TaskFuture future = getTaskFutures().get(path);
 						if (future != null && future.isDone() && !future.isCancelled()) { 
 							try {
-								return future.get();
+								result = future.get();
+								return result;
 							} catch (InterruptedException | ExecutionException e) {
 								throw new RuntimeException(e);
 							}

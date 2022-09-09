@@ -7,10 +7,9 @@
 		<groupId>io.onedev</groupId>
 		<artifactId>parent</artifactId>
 		<version>1.0.5</version>
-<!--		<relativePath></relativePath>-->
 	</parent>
 	<artifactId>server</artifactId>
-	<version>7.4.0</version>
+	<version>7.5.0</version>
 	<packaging>pom</packaging>
 	<build>
 		<finalName>${project.groupId}.${project.artifactId}-${project.version}</finalName>
@@ -39,7 +38,7 @@
 			<plugin>
 				<groupId>io.onedev</groupId>
 				<artifactId>plugin-maven</artifactId>
-				<version>2.1.1</version>
+				<version>2.2.0</version>
 				<executions>
 					<execution>
 						<?m2e execute onConfiguration,onIncremental?>
@@ -64,7 +63,7 @@
 				<executions>
 					<execution>
 						<id>default-jar</id>
-<!--						<phase>never</phase>-->
+						<phase>never</phase>
 						<configuration>
 							<finalName>unwanted</finalName>
 							<classifier>unwanted</classifier>
@@ -129,6 +128,11 @@
 				<groupId>io.onedev</groupId>
 				<artifactId>commons-jsymbol</artifactId>
 				<version>${commons.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>javax.activation</groupId>
+				<artifactId>activation</artifactId>
+				<version>1.1.1</version>
 			</dependency>
 			<dependency>
 				<groupId>org.slf4j</groupId>
@@ -253,7 +257,7 @@
 			<dependency>
 				<groupId>com.nimbusds</groupId>
 				<artifactId>oauth2-oidc-sdk</artifactId>
-				<version>3.4.1</version>
+				<version>9.35</version>
 			</dependency>
 			<dependency>
 				<groupId>com.zaxxer</groupId>
@@ -331,19 +335,9 @@
 				<version>${tika.version}</version>
 			</dependency>
 			<dependency>
-				<groupId>org.apache.commons</groupId>
-				<artifactId>commons-email</artifactId>
-				<version>1.5</version>
-			</dependency>
-			<dependency>
 				<groupId>com.sun.mail</groupId>
 				<artifactId>javax.mail</artifactId>
 				<version>1.6.2</version>
-			</dependency>
-			<dependency>
-				<groupId>commons-httpclient</groupId>
-				<artifactId>commons-httpclient</artifactId>
-				<version>3.1</version>
 			</dependency>
 			<dependency>
 				<groupId>joda-time</groupId>
@@ -397,7 +391,7 @@
 			</dependency>
 			<dependency>
 				<groupId>org.apache.lucene</groupId>
-				<artifactId>lucene-analyzers-smartcn</artifactId>			
+				<artifactId>lucene-analyzers-smartcn</artifactId>
 				<version>${lucene.version}</version>
 			</dependency>
 			<dependency>
@@ -570,14 +564,17 @@
 				<artifactId>agent</artifactId>
 				<version>${agent.version}</version>
 			</dependency>
+			<dependency>
+				<groupId>com.slack.api</groupId>
+				<artifactId>slack-api-client</artifactId>
+				<version>1.25.0</version>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
 	<repositories>
 		<repository>
 			<id>onedev</id>
-<!--			<url>https://artifact.onedev.io/artifactory/onedev</url>-->
-			<url>File://C:/Users/1/.m2/repository/</url>
-<!--				<url>https://mvn.fanruan.com/dev/com/onedev</url>&ndash;&gt;-->
+			<url>https://artifact.onedev.io/artifactory/onedev</url>
 			<releases>
 				<enabled>true</enabled>
 				<updatePolicy>never</updatePolicy>
@@ -585,15 +582,14 @@
 			</releases>
 			<snapshots>
 				<enabled>true</enabled>
-				<updatePolicy>never</updatePolicy>
-<!--				<updatePolicy>never</updatePolicy>-->
+				<updatePolicy>always</updatePolicy>
 				<checksumPolicy>fail</checksumPolicy>
 			</snapshots>
 		</repository>
 	</repositories>
 	<properties>
-		<commons.version>2.2.3</commons.version>
-		<agent.version>1.3.15</agent.version>
+		<commons.version>2.2.10</commons.version>
+		<agent.version>1.4.0</agent.version>
 		<slf4j.version>1.7.30</slf4j.version>
 		<logback.version>1.2.9</logback.version>
 		<antlr.version>4.7.2</antlr.version>

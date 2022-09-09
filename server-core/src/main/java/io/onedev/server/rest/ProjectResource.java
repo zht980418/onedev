@@ -31,6 +31,7 @@ import io.onedev.commons.utils.ExplicitException;
 import io.onedev.commons.utils.StringUtils;
 import io.onedev.server.entitymanager.MilestoneManager;
 import io.onedev.server.entitymanager.ProjectManager;
+import io.onedev.server.entitymanager.UrlManager;
 import io.onedev.server.git.GitContribution;
 import io.onedev.server.git.GitContributor;
 import io.onedev.server.infomanager.CommitInfoManager;
@@ -69,12 +70,15 @@ public class ProjectResource {
 	
 	private final CommitInfoManager commitInfoManager;
 	
+	private final UrlManager urlManager;
+	
 	@Inject
 	public ProjectResource(ProjectManager projectManager, MilestoneManager milestoneManager, 
-			CommitInfoManager commitInfoManager) {
+			CommitInfoManager commitInfoManager, UrlManager urlManager) {
 		this.projectManager = projectManager;
 		this.milestoneManager = milestoneManager;
 		this.commitInfoManager = commitInfoManager;
+		this.urlManager = urlManager;
 	}
 
 	@Api(order=100)
@@ -86,7 +90,22 @@ public class ProjectResource {
 			throw new UnauthorizedException();
     	return project;
     }
+	
+	@Api(order=150)
+	@Path("/{projectId}/clone-url")
+    @GET
+    public CloneUrl getCloneURL(@PathParam("projectId") Long projectId) {
+    	Project project = projectManager.load(projectId);
+    	if (!SecurityUtils.canAccess(project))
+			throw new UnauthorizedException();
 
+    	CloneUrl cloneUrl = new CloneUrl();
+    	cloneUrl.setHttp(urlManager.cloneUrlFor(project, false));
+    	cloneUrl.setSsh(urlManager.cloneUrlFor(project, true));
+    	
+    	return cloneUrl;
+    }
+	
 	@Api(order=200)
 	@Path("/{projectId}/setting")
     @GET
@@ -107,7 +126,7 @@ public class ProjectResource {
 		setting.contributedSettings = project.getContributedSettings();
 		return setting;
     }
-
+	
 	@Api(order=300)
 	@Path("/{projectId}/forks")
     @GET
@@ -117,7 +136,7 @@ public class ProjectResource {
 			throw new UnauthorizedException();
     	return project.getForks();
     }
-
+	
 	@Api(order=400)
 	@Path("/{projectId}/group-authorizations")
     @GET
@@ -126,7 +145,7 @@ public class ProjectResource {
 			throw new UnauthorizedException();
     	return projectManager.load(projectId).getGroupAuthorizations();
     }
-
+	
 	@Api(order=500)
 	@Path("/{projectId}/user-authorizations")
     @GET
@@ -136,14 +155,14 @@ public class ProjectResource {
 			throw new UnauthorizedException();
     	return project.getUserAuthorizations();
     }
-
+	
 	@Api(order=700)
 	@GET
     public List<Project> queryBasicInfo(
     		@QueryParam("query") @Api(description="Syntax of this query is the same as query box in <a href='/projects'>projects page</a>", example="\"Name\" is \"projectName\"") String query, 
     		@QueryParam("offset") @Api(example="0") int offset, 
     		@QueryParam("count") @Api(example="100") int count) {
-
+		
     	if (count > RestConstants.MAX_PAGE_SIZE)
     		throw new InvalidParamException("Count should not be greater than " + RestConstants.MAX_PAGE_SIZE);
 
@@ -153,10 +172,10 @@ public class ProjectResource {
 		} catch (Exception e) {
 			throw new InvalidParamException("Error parsing query", e);
 		}
-
+    	
     	return projectManager.query(parsedQuery, offset, count);
     }
-
+	
 	@Api(order=750)
 	@Path("/{projectId}/milestones")
     @GET
@@ -173,7 +192,7 @@ public class ProjectResource {
 
     	if (count > RestConstants.MAX_PAGE_SIZE)
     		throw new InvalidParamException("Count should not be greater than " + RestConstants.MAX_PAGE_SIZE);
-
+    	
     	EntityCriteria<Milestone> criteria = EntityCriteria.of(Milestone.class);
     	criteria.add(Restrictions.in(Milestone.PROP_PROJECT, project.getSelfAndAncestors()));
     	if (name != null)
@@ -188,10 +207,10 @@ public class ProjectResource {
     		criteria.add(Restrictions.ge(Milestone.PROP_DUE_DATE, DateUtils.parseISO8601Date(dueAfter)));
     	if (closed != null)
     		criteria.add(Restrictions.eq(Milestone.PROP_CLOSED, closed));
-
+    	
     	return milestoneManager.query(criteria, offset, count);
     }
-
+	
 	@Api(order=760, description="Get top contributors on default branch")
 	@Path("/{projectId}/top-contributors")
 	@GET
@@ -203,28 +222,28 @@ public class ProjectResource {
     	Project project = projectManager.load(projectId);
     	if (!SecurityUtils.canAccess(project)) 
 			throw new UnauthorizedException();
-
+    	
     	if (count > RestConstants.MAX_PAGE_SIZE)
     		throw new InvalidParamException("Count should not be greater than " + RestConstants.MAX_PAGE_SIZE);
-
+    	
     	Day sinceDay = new Day(LocalDate.parse(since));
     	Day untilDay = new Day(LocalDate.parse(until));
-
+    	
     	return commitInfoManager.getTopContributors(project, count, type, sinceDay.getValue(), untilDay.getValue());
     }
-
+	
 
 	@SuppressWarnings("unused")
 	private static String getDateExample() {
 		return DateUtils.formatISO8601Date(new Date());
 	}
-
+	
 	@Api(order=800, description="Update project of specified id in request body, or create new if id property not provided")
     @POST
     public Long createOrUpdate(@NotNull Project project) {
 		Project parent = project.getParent();
 		String customData = (String) project.getCustomData();
-
+		
 		Long prevParentId;
 		if (customData != null && customData.contains(":"))
 			prevParentId = Long.valueOf(StringUtils.substringBefore(customData, ":"));
@@ -237,12 +256,12 @@ public class ProjectResource {
 			if (parent == null && !SecurityUtils.canCreateRootProjects()) 
 				throw new UnauthorizedException("Not authorized to create root project");
 		}
-
+	
 		if (parent != null && project.isSelfOrAncestorOf(parent)) 
 			throw new ExplicitException("Can not use current or descendant project as parent");
-
+		
 		Project projectWithSameName = projectManager.find(parent, project.getName());
-		if (projectWithSameName != null) {
+		if (projectWithSameName != null && !projectWithSameName.equals(project)) {
 			if (parent != null) {
 				throw new ExplicitException("Name '" + project.getName() + "' is already used by another project under '" 
 						+ parent.getPath() + "'");
@@ -250,7 +269,7 @@ public class ProjectResource {
 				throw new ExplicitException("Name '" + project.getName() + "' is already used by another root project");
 			}
 		}
-
+		
     	if (project.isNew()) { 
     		projectManager.create(project);
     	} else if (!SecurityUtils.canManage(project)) {
@@ -261,10 +280,10 @@ public class ProjectResource {
     			oldPath = StringUtils.substringAfter(oldPath, ":");
     		projectManager.save(project, oldPath);
     	}
-
+    	
     	return project.getId();
     }
-
+	
 	@Api(order=900, description="Update project setting")
 	@Path("/{projectId}/setting")
     @POST
@@ -284,7 +303,7 @@ public class ProjectResource {
 		projectManager.save(project);
 		return Response.ok().build();
     }
-
+	
 	@Api(order=1000)
 	@Path("/{projectId}")
     @DELETE
@@ -295,6 +314,32 @@ public class ProjectResource {
     	projectManager.delete(project);
     	return Response.ok().build();
     }
+	
+	public static class CloneUrl implements Serializable {
+		
+		private static final long serialVersionUID = 1L;
+
+		private String http;
+		
+		private String ssh;
+
+		public String getHttp() {
+			return http;
+		}
+
+		public void setHttp(String http) {
+			this.http = http;
+		}
+
+		public String getSsh() {
+			return ssh;
+		}
+
+		public void setSsh(String ssh) {
+			this.ssh = ssh;
+		}
+		
+	}
 	
 	public static class ProjectSetting implements Serializable {
 		

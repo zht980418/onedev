@@ -7,17 +7,22 @@ import static io.onedev.server.model.User.PROP_SSO_CONNECTOR;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Stack;
 import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
-import javax.persistence.*;
+import javax.persistence.CascadeType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Index;
+import javax.persistence.Lob;
+import javax.persistence.OneToMany;
+import javax.persistence.Table;
 
-import com.beust.jcommander.internal.Sets;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.shiro.authc.AuthenticationInfo;
 import org.apache.shiro.subject.PrincipalCollection;
@@ -34,6 +39,7 @@ import com.google.common.base.MoreObjects;
 import edu.emory.mathcs.backport.java.util.Collections;
 import io.onedev.commons.utils.ExplicitException;
 import io.onedev.server.OneDev;
+import io.onedev.server.entitymanager.EmailAddressManager;
 import io.onedev.server.entitymanager.SettingManager;
 import io.onedev.server.entitymanager.UserManager;
 import io.onedev.server.model.support.NamedProjectQuery;
@@ -45,18 +51,12 @@ import io.onedev.server.model.support.build.NamedBuildQuery;
 import io.onedev.server.model.support.issue.NamedIssueQuery;
 import io.onedev.server.model.support.pullrequest.NamedPullRequestQuery;
 import io.onedev.server.security.SecurityUtils;
-import io.onedev.server.util.match.MatchScoreUtils;
+import io.onedev.server.util.facade.UserFacade;
 import io.onedev.server.util.validation.annotation.UserName;
 import io.onedev.server.util.watch.QuerySubscriptionSupport;
 import io.onedev.server.util.watch.QueryWatchSupport;
 import io.onedev.server.web.editable.annotation.Editable;
 import io.onedev.server.web.editable.annotation.Password;
-
-import static io.onedev.server.model.Project.PROP_CODE_MANAGEMENT;
-import static io.onedev.server.model.Project.PROP_DESCRIPTION;
-import static io.onedev.server.model.Project.PROP_ISSUE_MANAGEMENT;
-//import static io.onedev.server.model.Project.PROP_NAME;
-import static io.onedev.server.model.Project.PROP_FORK_PERMISSION;
 
 @Entity
 @Table(
@@ -94,18 +94,6 @@ public class User extends AbstractEntity implements AuthenticationInfo {
 	
 	public static final String PROP_ACCESS_TOKEN = "accessToken";
 	
-//	demand3
-	public static final String PERSONAL_PROJECT = "personalProject";
-	@ManyToOne
-	@JoinColumn(name = "personal_poject_id")
-	public static Project personalProject;
-	
-	public void setPersonalProject(){
-		Project editProject = new Project();
-		
-
-	}
-	
 	private static ThreadLocal<Stack<User>> stack =  new ThreadLocal<Stack<User>>() {
 
 		@Override
@@ -139,6 +127,18 @@ public class User extends AbstractEntity implements AuthenticationInfo {
 	@OneToMany(mappedBy="user", cascade=CascadeType.REMOVE)
 	@Cache(usage=CacheConcurrencyStrategy.READ_WRITE)
 	private Collection<UserAuthorization> projectAuthorizations = new ArrayList<>();
+	
+	@OneToMany(mappedBy="owner", cascade=CascadeType.REMOVE)
+	@Cache(usage=CacheConcurrencyStrategy.READ_WRITE)
+	private Collection<Dashboard> dashboards = new ArrayList<>();
+	
+	@OneToMany(mappedBy="user", cascade=CascadeType.REMOVE)
+	@Cache(usage=CacheConcurrencyStrategy.READ_WRITE)
+	private Collection<DashboardVisit> dashboardVisits = new ArrayList<>();
+	
+	@OneToMany(mappedBy="user", cascade=CascadeType.REMOVE)
+	@Cache(usage=CacheConcurrencyStrategy.READ_WRITE)
+	private Collection<DashboardUserShare> dashboardShares = new ArrayList<>();
 	
 	@OneToMany(mappedBy="user", cascade=CascadeType.REMOVE)
 	@Cache(usage=CacheConcurrencyStrategy.READ_WRITE)
@@ -189,6 +189,10 @@ public class User extends AbstractEntity implements AuthenticationInfo {
 	@Cache(usage=CacheConcurrencyStrategy.READ_WRITE)
     private Collection<EmailAddress> emailAddresses = new ArrayList<>();
     
+    @OneToMany(mappedBy="owner", cascade=CascadeType.REMOVE)
+	@Cache(usage=CacheConcurrencyStrategy.READ_WRITE)
+    private Collection<GpgKey> gpgKeys = new ArrayList<>();
+    
     @JsonIgnore
 	@Lob
 	@Column(nullable=false, length=65535)
@@ -227,15 +231,11 @@ public class User extends AbstractEntity implements AuthenticationInfo {
     private transient Collection<Group> groups;
     
     private transient List<EmailAddress> sortedEmailAddresses;
-// demand 3
-	public Project getPersonalPoject() {
-		return personalProject;
-	}
-
-	public void setPersonalPoject(Project personalPoject) {
-		this.personalProject = personalProject;
-	}
-
+    
+    private transient Optional<EmailAddress> primaryEmailAddress;
+    
+    private transient Optional<EmailAddress> gitEmailAddress;
+    
 	public QueryPersonalization<NamedProjectQuery> getProjectQueryPersonalization() {
 		return new QueryPersonalization<NamedProjectQuery>() {
 
@@ -571,17 +571,7 @@ public class User extends AbstractEntity implements AuthenticationInfo {
 	@Override
 	public int compareTo(AbstractEntity entity) {
 		User user = (User) entity;
-		if (getDisplayName().equals(user.getDisplayName())) {
-			return getId().compareTo(entity.getId());
-		} else {
-			return getDisplayName().compareTo(user.getDisplayName());
-		}
-	}
-
-	public double getMatchScore(@Nullable String queryTerm) {
-		double scoreOfName = MatchScoreUtils.getMatchScore(name, queryTerm);
-		double scoreOfFullName = MatchScoreUtils.getMatchScore(fullName, queryTerm);
-		return Math.max(scoreOfName, scoreOfFullName);
+		return getDisplayName().compareTo(user.getDisplayName());
 	}
 
 	public Collection<Group> getGroups() {
@@ -630,6 +620,14 @@ public class User extends AbstractEntity implements AuthenticationInfo {
 		this.emailAddresses = emailAddresses;
 	}
 
+	public Collection<GpgKey> getGpgKeys() {
+		return gpgKeys;
+	}
+
+	public void setGpgKeys(Collection<GpgKey> gpgKeys) {
+		this.gpgKeys = gpgKeys;
+	}
+
 	public boolean isSshKeyExternalManaged() {
     	if (isExternalManaged()) {
     		if (getSsoConnector() != null) {
@@ -670,6 +668,39 @@ public class User extends AbstractEntity implements AuthenticationInfo {
 			return "Builtin User Store";
 		}
     }
+
+	public Collection<Dashboard> getDashboards() {
+		return dashboards;
+	}
+
+	public void setDashboards(Collection<Dashboard> dashboards) {
+		this.dashboards = dashboards;
+	}
+
+	public Collection<DashboardVisit> getDashboardVisits() {
+		return dashboardVisits;
+	}
+	
+	public void setDashboardVisits(Collection<DashboardVisit> dashboardVisits) {
+		this.dashboardVisits = dashboardVisits;
+	}
+	
+	@Nullable
+	public DashboardVisit getDashboardVisit(Dashboard dashboard) {
+		for (DashboardVisit visit: getDashboardVisits()) {
+			if (visit.getDashboard().equals(dashboard))
+				return visit;
+		}
+		return null;
+	}
+
+	public Collection<DashboardUserShare> getDashboardShares() {
+		return dashboardShares;
+	}
+
+	public void setDashboardShares(Collection<DashboardUserShare> dashboardShares) {
+		this.dashboardShares = dashboardShares;
+	}
 
 	public Collection<PullRequestReview> getPullRequestReviews() {
 		return pullRequestReviews;
@@ -815,45 +846,31 @@ public class User extends AbstractEntity implements AuthenticationInfo {
 	public List<EmailAddress> getSortedEmailAddresses() {
 		if (sortedEmailAddresses == null) {
 			sortedEmailAddresses = new ArrayList<>(getEmailAddresses());
-			Collections.sort(sortedEmailAddresses, new Comparator<EmailAddress>() {
-
-				@Override
-				public int compare(EmailAddress o1, EmailAddress o2) {
-					if (o1.isPrimary() && o2.isPrimary() || !o1.isPrimary() && !o2.isPrimary()) {
-						if (o1.isGit() && o2.isGit() || !o1.isGit() && !o2.isGit()) 
-							return o1.getId().compareTo(o2.getId());
-						else if (o1.isGit()) 
-							return -1;
-						else 
-							return 1;
-					} else if (o1.isPrimary()) {
-						return -1;
-					} else {
-						return 1;
-					}
-				}
-				
-			});
+			Collections.sort(sortedEmailAddresses);
 		}
 		return sortedEmailAddresses;
 	}
 	
+	private EmailAddressManager getEmailAddressManager() {
+		return OneDev.getInstance(EmailAddressManager.class);
+	}
+	
 	@Nullable
 	public EmailAddress getPrimaryEmailAddress() {
-		return getSortedEmailAddresses().stream().filter(it->it.isPrimary()).findFirst().orElse(null);
+		if (primaryEmailAddress == null)
+			primaryEmailAddress = Optional.ofNullable(getEmailAddressManager().findPrimary(this));
+		return primaryEmailAddress.orElse(null);
 	}
 
 	@Nullable
 	public EmailAddress getGitEmailAddress() {
-		return getSortedEmailAddresses().stream().filter(it->it.isGit()).findFirst().orElse(null);
+		if (gitEmailAddress == null)
+			gitEmailAddress = Optional.ofNullable(getEmailAddressManager().findGit(this));
+		return gitEmailAddress.orElse(null);
 	}
 	
-	public List<GpgKey> getGpgKeys() {
-		List<GpgKey> gpgKeys = new ArrayList<>();
-		for (EmailAddress emailAddress: getEmailAddresses())
-			gpgKeys.addAll(emailAddress.getGpgKeys());
-		Collections.sort(gpgKeys);
-		return gpgKeys;
+	public UserFacade getFacade() {
+		return new UserFacade(getId(), getName(), getFullName(), getAccessToken());
 	}
-
+	
 }
