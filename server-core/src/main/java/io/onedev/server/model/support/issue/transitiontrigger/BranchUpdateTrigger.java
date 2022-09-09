@@ -59,9 +59,9 @@ public class BranchUpdateTrigger extends TransitionTrigger {
 	@Override
 	public String getDescription() {
 		if (branches != null)
-			return "code is committed to branches '" + branches + "'";
+			return "Committed to branches '" + branches + "'";
 		else
-			return "code is committed to any branch";
+			return "Committed to any branch";
 	}
 	
 }

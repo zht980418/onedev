@@ -84,23 +84,16 @@ public class MarkdownViewer extends GenericPanel<String> {
 	protected BlobRenderContext getRenderContext() {
 		return null;
 	}
-
-	@Nullable
-	private Project getProject() {
-		if (getRenderContext() != null)
-			return getRenderContext().getProject();
-		else if (getPage() instanceof ProjectPage)
-			return ((ProjectPage) getPage()).getProject(); 
-		else
-			return null;
-	}
 	
 	@Nullable
 	private String renderMarkdown() {
 		String markdown = getModelObject();
 		if (markdown != null) {
+			Project project = null;
+			if (getPage() instanceof ProjectPage)
+				project = ((ProjectPage) getPage()).getProject(); 
 			MarkdownManager manager = AppLoader.getInstance(MarkdownManager.class);
-			return manager.process(manager.render(markdown), getProject(), 
+			return manager.process(manager.render(markdown), project, 
 					getRenderContext(), getSuggestionSupport(), false);
 		} else {
 			return null;
@@ -249,8 +242,9 @@ public class MarkdownViewer extends GenericPanel<String> {
 					}
 					break;
 				case "commit":
-					RevCommit commit = getProject().getRevCommit(ObjectId.fromString(referenceId), false);
-					if (commit != null && SecurityUtils.canReadCode(getProject())) {
+					ProjectPage page = (ProjectPage) getPage();
+					RevCommit commit = page.getProject().getRevCommit(ObjectId.fromString(referenceId), false);
+					if (commit != null && SecurityUtils.canReadCode(page.getProject())) {
 						String script = String.format("onedev.server.markdown.renderCommitTooltip('%s', '%s', '%s');", 
 								JavaScriptEscape.escapeJavaScript(commit.getAuthorIdent().getName()), 
 								JavaScriptEscape.escapeJavaScript(DateUtils.formatAge(commit.getCommitterIdent().getWhen())), 

@@ -15,7 +15,6 @@ import org.bouncycastle.openpgp.PGPException;
 import org.bouncycastle.openpgp.PGPKeyRingGenerator;
 import org.bouncycastle.openpgp.PGPSecretKeyRing;
 
-import io.onedev.commons.utils.StringUtils;
 import io.onedev.server.OneDev;
 import io.onedev.server.entitymanager.SettingManager;
 import io.onedev.server.model.User;
@@ -41,7 +40,7 @@ public class GpgSigningKeyPage extends AdministrationPage {
 		if (signingKey != null) {
 			Fragment fragment = new Fragment("content", "definedFrag", this);
 			fragment.add(new Label("keyID", GpgUtils.getKeyIDString(signingKey.getPublicKey().getKeyID())));
-			fragment.add(new Label("emailAddress", StringUtils.join(GpgUtils.getEmailAddresses(signingKey.getPublicKey()), ", ")));
+			fragment.add(new Label("emailAddress", GpgUtils.getEmailAddress(signingKey.getPublicKey())));
 			
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			try (ArmoredOutputStream aos = new ArmoredOutputStream(baos)) {

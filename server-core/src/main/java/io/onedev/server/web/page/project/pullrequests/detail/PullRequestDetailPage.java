@@ -73,15 +73,12 @@ import io.onedev.server.model.PullRequest;
 import io.onedev.server.model.PullRequestReview;
 import io.onedev.server.model.PullRequestReview.Status;
 import io.onedev.server.model.PullRequestWatch;
-import io.onedev.server.model.User;
 import io.onedev.server.model.support.EntityWatch;
 import io.onedev.server.model.support.pullrequest.MergePreview;
 import io.onedev.server.model.support.pullrequest.MergeStrategy;
 import io.onedev.server.search.entity.EntityQuery;
 import io.onedev.server.search.entity.pullrequest.PullRequestQuery;
 import io.onedev.server.security.SecurityUtils;
-import io.onedev.server.security.permission.ProjectPermission;
-import io.onedev.server.security.permission.ReadCode;
 import io.onedev.server.util.ProjectScope;
 import io.onedev.server.util.ProjectScopedNumber;
 import io.onedev.server.web.WebSession;
@@ -167,11 +164,11 @@ public abstract class PullRequestDetailPage extends ProjectPage implements PullR
 				if (request == null) {
 					throw new EntityNotFoundException("Unable to find pull request #" 
 							+ requestNumber + " in project " + getProject());
-				} else if (!request.getTargetProject().equals(getProject())) {
-					throw new RestartResponseException(getPageClass(), paramsOf(request));
-				} else {
-					return request;
 				}
+				else if (!request.getTargetProject().equals(getProject()))
+					throw new RestartResponseException(getPageClass(), paramsOf(request));
+				else
+					return request;
 			}
 
 		};
@@ -888,11 +885,6 @@ public abstract class PullRequestDetailPage extends ProjectPage implements PullR
 					protected AbstractEntity getEntity() {
 						return getPullRequest();
 					}
-
-					@Override
-					protected boolean isAuthorized(User user) {
-						return user.asSubject().isPermitted(new ProjectPermission(getProject(), new ReadCode()));
-					}
 					
 				});
 				
@@ -962,7 +954,7 @@ public abstract class PullRequestDetailPage extends ProjectPage implements PullR
 
 					@Override
 					protected EntityQuery<PullRequest> parse(String queryString, Project project) {
-						return PullRequestQuery.parse(project, queryString, true);
+						return PullRequestQuery.parse(project, queryString);
 					}
 
 					@Override
@@ -1204,6 +1196,11 @@ public abstract class PullRequestDetailPage extends ProjectPage implements PullR
 		
 		operationsContainer.add(new ModalLink("approve") {
 
+			@Override
+			protected String getModalCssClass() {
+				return "modal-lg";
+			}
+
 			private boolean canOperate() {
 				PullRequest request = getPullRequest();
 				if (request.isOpen()) {
@@ -1245,6 +1242,11 @@ public abstract class PullRequestDetailPage extends ProjectPage implements PullR
 		});
 		
 		operationsContainer.add(new ModalLink("requestForChanges") {
+
+			@Override
+			protected String getModalCssClass() {
+				return "modal-lg";
+			}
 
 			private boolean canOperate() {
 				PullRequest request = getPullRequest();
@@ -1320,6 +1322,11 @@ public abstract class PullRequestDetailPage extends ProjectPage implements PullR
 		
 		operationsContainer.add(new ModalLink("discard") {
 
+			@Override
+			protected String getModalCssClass() {
+				return "modal-lg";
+			}
+
 			private boolean canOperate() {
 				return getPullRequest().isOpen() && SecurityUtils.canModify(getPullRequest());
 			}
@@ -1354,6 +1361,11 @@ public abstract class PullRequestDetailPage extends ProjectPage implements PullR
 		});
 		
 		operationsContainer.add(new ModalLink("reopen") {
+
+			@Override
+			protected String getModalCssClass() {
+				return "modal-lg";
+			}
 
 			private boolean canOperate() {
 				PullRequest request = getPullRequest();
@@ -1390,6 +1402,11 @@ public abstract class PullRequestDetailPage extends ProjectPage implements PullR
 		});
 		
 		operationsContainer.add(new ModalLink("deleteSourceBranch") {
+
+			@Override
+			protected String getModalCssClass() {
+				return "modal-lg";
+			}
 
 			private boolean canOperate() {
 				PullRequest request = getPullRequest();
@@ -1429,6 +1446,11 @@ public abstract class PullRequestDetailPage extends ProjectPage implements PullR
 		});
 		
 		operationsContainer.add(new ModalLink("restoreSourceBranch") {
+
+			@Override
+			protected String getModalCssClass() {
+				return "modal-lg";
+			}
 
 			private boolean canOperate() {
 				PullRequest request = getPullRequest();
@@ -1560,7 +1582,7 @@ public abstract class PullRequestDetailPage extends ProjectPage implements PullR
 	protected Component newProjectTitle(String componentId) {
 		Fragment fragment = new Fragment(componentId, "projectTitleFrag", this);
 		fragment.add(new BookmarkablePageLink<Void>("pullRequests", ProjectPullRequestsPage.class, 
-				ProjectPullRequestsPage.paramsOf(getProject(), 0)));
+				ProjectPullRequestsPage.paramsOf(getProject())));
 		fragment.add(new Label("pullRequestNumber", "#" + getPullRequest().getNumber()));
 		return fragment;
 	}

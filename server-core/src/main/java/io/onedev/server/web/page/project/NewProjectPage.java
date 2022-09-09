@@ -4,6 +4,7 @@ import static io.onedev.server.model.Project.PROP_CODE_MANAGEMENT;
 import static io.onedev.server.model.Project.PROP_DESCRIPTION;
 import static io.onedev.server.model.Project.PROP_ISSUE_MANAGEMENT;
 import static io.onedev.server.model.Project.PROP_NAME;
+import static io.onedev.server.model.Project.PROP_FORK_PERMISSION;
 
 import java.util.Collection;
 
@@ -50,7 +51,7 @@ public class NewProjectPage extends LayoutPage {
 		Project editProject = new Project();
 		
 		Collection<String> properties = Sets.newHashSet(PROP_NAME, PROP_DESCRIPTION, 
-				PROP_CODE_MANAGEMENT, PROP_ISSUE_MANAGEMENT);
+				PROP_CODE_MANAGEMENT, PROP_ISSUE_MANAGEMENT,PROP_FORK_PERMISSION);
 		
 		DefaultRoleBean defaultRoleBean = new DefaultRoleBean();
 		ParentBean parentBean = new ParentBean();
@@ -73,6 +74,11 @@ public class NewProjectPage extends LayoutPage {
 					if (parentBean.getParentPath() != null)
 						projectPath = parentBean.getParentPath() + "/" + projectPath;
 					Project newProject = getProjectManager().initialize(projectPath);
+//					demand 3 ban the name has "-personal-project"
+					if(projectPath.indexOf("-personal-project")!=-1){
+						editor.error(new Path(new PathNode.Named("name")),
+								"This name contains '-personal-project', which is conflicted with other's personal project");
+					}
 					if (!newProject.isNew()) {
 						editor.error(new Path(new PathNode.Named("name")),
 								"This name has already been used by another project");
@@ -80,6 +86,8 @@ public class NewProjectPage extends LayoutPage {
 						newProject.setDescription(editProject.getDescription());
 						newProject.setCodeManagement(editProject.isCodeManagement());
 						newProject.setIssueManagement(editProject.isIssueManagement());
+//						demand2 set forkPermission
+						newProject.setForkPermission(editProject.isForkPermission());
 						newProject.setDefaultRole(defaultRoleBean.getRole());
 						
 						getProjectManager().create(newProject);

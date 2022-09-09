@@ -1,5 +1,6 @@
 package io.onedev.server.plugin.imports.gitea;
 
+import java.io.Serializable;
 import java.util.Collection;
 
 import com.google.common.collect.Lists;
@@ -16,8 +17,6 @@ import io.onedev.server.imports.ProjectImporterContribution;
  */
 public class GiteaPluginModule extends AbstractPluginModule {
 
-	static final String NAME = "Gitea";
-	
 	@Override
 	protected void configure() {
 		super.configure();
@@ -26,7 +25,7 @@ public class GiteaPluginModule extends AbstractPluginModule {
 		contribute(ProjectImporterContribution.class, new ProjectImporterContribution() {
 
 			@Override
-			public Collection<ProjectImporter> getImporters() {
+			public Collection<ProjectImporter<? extends Serializable, ? extends Serializable, ? extends Serializable>> getImporters() {
 				return Lists.newArrayList(new GiteaProjectImporter());
 			}
 
@@ -40,7 +39,7 @@ public class GiteaPluginModule extends AbstractPluginModule {
 		contribute(IssueImporterContribution.class, new IssueImporterContribution() {
 
 			@Override
-			public Collection<IssueImporter> getImporters() {
+			public Collection<IssueImporter<? extends Serializable, ? extends Serializable, ? extends Serializable>> getImporters() {
 				return Lists.newArrayList(new GiteaIssueImporter());
 			}
 

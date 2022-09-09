@@ -119,7 +119,7 @@ public class BuildListPage extends LayoutPage {
 				pushState(RequestCycle.get().find(AjaxRequestTarget.class), url.toString(), query);
 			}
 			
-		}, true, true, expectedCount) {
+		}, expectedCount) {
 
 			@Override
 			protected PagingHistorySupport getPagingHistorySupport() {

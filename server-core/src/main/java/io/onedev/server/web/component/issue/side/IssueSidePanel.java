@@ -46,7 +46,6 @@ import io.onedev.server.entitymanager.IssueManager;
 import io.onedev.server.entitymanager.IssueVoteManager;
 import io.onedev.server.entitymanager.IssueWatchManager;
 import io.onedev.server.entitymanager.LinkSpecManager;
-import io.onedev.server.entitymanager.SettingManager;
 import io.onedev.server.entityreference.Referenceable;
 import io.onedev.server.model.AbstractEntity;
 import io.onedev.server.model.Issue;
@@ -64,7 +63,8 @@ import io.onedev.server.search.entity.issue.StateCriteria;
 import io.onedev.server.security.SecurityUtils;
 import io.onedev.server.util.Input;
 import io.onedev.server.util.LinkSide;
-import io.onedev.server.util.Similarities;
+import io.onedev.server.util.match.MatchScoreProvider;
+import io.onedev.server.util.match.MatchScoreUtils;
 import io.onedev.server.web.WebConstants;
 import io.onedev.server.web.ajaxlistener.AttachAjaxIndicatorListener;
 import io.onedev.server.web.ajaxlistener.ConfirmClickListener;
@@ -128,11 +128,6 @@ public abstract class IssueSidePanel extends Panel {
 			protected AbstractEntity getEntity() {
 				return getIssue();
 			}
-
-			@Override
-			protected boolean isAuthorized(User user) {
-				return SecurityUtils.canAccess(user.asSubject(), getIssue());
-			}
 			
 		});
 		
@@ -145,13 +140,10 @@ public abstract class IssueSidePanel extends Panel {
 			
 		});
 		
-		String initialState = OneDev.getInstance(SettingManager.class).getIssueSetting().getInitialStateSpec().getName();
-		if (SecurityUtils.canManageIssues(getProject()) 
-				|| getIssue().getState().equals(initialState) && getIssue().getSubmitter().equals(SecurityUtils.getUser())) {
+		if (SecurityUtils.canManageIssues(getProject()))
 			addOrReplace(newDeleteLink("delete"));		
-		} else {
+		else
 			addOrReplace(new WebMarkupContainer("delete").setVisible(false));
-		}
 		
 		super.onBeforeRender();
 	}
@@ -585,14 +577,15 @@ public abstract class IssueSidePanel extends Panel {
 				List<Milestone> milestones = getProject().getSortedHierarchyMilestones();
 				milestones.removeAll(getIssue().getMilestones());
 				
-				milestones = new Similarities<Milestone>(milestones) {
+				milestones = MatchScoreUtils.filterAndSort(
+						milestones, new MatchScoreProvider<Milestone>() {
 
 					@Override
-					public double getSimilarScore(Milestone object) {
-						return Similarities.getSimilarScore(object.getName(), term);
+					public double getMatchScore(Milestone object) {
+						return MatchScoreUtils.getMatchScore(object.getName(), term);
 					}
 					
-				};
+				});
 				new ResponseFiller<Milestone>(response).fill(milestones, page, WebConstants.PAGE_SIZE);
 			}
 			

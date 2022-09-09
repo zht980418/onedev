@@ -20,8 +20,8 @@ import io.onedev.server.model.Project;
 import io.onedev.server.model.PullRequest;
 import io.onedev.server.model.User;
 import io.onedev.server.security.SecurityUtils;
-import io.onedev.server.util.Similarities;
-import io.onedev.server.util.facade.UserCache;
+import io.onedev.server.util.match.MatchScoreProvider;
+import io.onedev.server.util.match.MatchScoreUtils;
 import io.onedev.server.web.component.markdown.AtWhoReferenceSupport;
 import io.onedev.server.web.component.markdown.MarkdownEditor;
 import io.onedev.server.web.component.markdown.UserMentionSupport;
@@ -40,35 +40,28 @@ public abstract class CommentInput extends MarkdownEditor {
 			@Override
 			public List<User> findUsers(String query, int count) {
 				List<User> mentionables = getMentionables();
-				UserCache cache = getUserManager().cloneCache();
-				
-				List<User> similarities = new Similarities<User>(mentionables) {
+				List<User> filtered = MatchScoreUtils.filterAndSort(mentionables, new MatchScoreProvider<User>() {
 
 					@Override
-					public double getSimilarScore(User object) {
-						return cache.getSimilarScore(object, query);
+					public double getMatchScore(User object) {
+						return object.getMatchScore(query) 
+								* (mentionables.size() - mentionables.indexOf(object)) 
+								/ mentionables.size();
 					}
 					
-				};
+				});
 				
-				if (similarities.size() > count)
-					return similarities.subList(0, count);
+				if (filtered.size() > count)
+					return filtered.subList(0, count);
 				else
-					return similarities;
+					return filtered;
 			}
 			
 		};
 	}
 	
-	private UserManager getUserManager() {
-		return OneDev.getInstance(UserManager.class);
-	}
-	
 	protected List<User> getMentionables() {
-		UserCache cache = getUserManager().cloneCache();
-		List<User> users = new ArrayList<>(cache.getUsers());
-		users.sort(cache.comparingDisplayName(Sets.newHashSet()));
-		return users;
+		return OneDev.getInstance(UserManager.class).queryAndSort(Sets.newHashSet());
 	}
 
 	@Override

@@ -23,7 +23,7 @@ public class NoActivityTrigger extends TransitionTrigger {
 	
 	@Override
 	public String getDescription() {
-		return "no activity for " + days + " days"; 
+		return "No activity for " + days + " days"; 
 	}
 	
 }

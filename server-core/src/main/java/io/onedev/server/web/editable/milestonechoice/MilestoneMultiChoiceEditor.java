@@ -50,11 +50,11 @@ public class MilestoneMultiChoiceEditor extends PropertyEditor<List<String>> {
 			if (milestoneChoice.value().length() != 0) {
 				choices.addAll((List<Milestone>)ReflectionUtils
 						.invokeStaticMethod(descriptor.getBeanClass(), milestoneChoice.value()));
-			} else if (Project.get() != null) {
+			} else {
 				choices.addAll(Project.get().getSortedHierarchyMilestones());
 			}
 
-			if (getModelObject() != null && Project.get() != null) {
+			if (getModelObject() != null) {
 				MilestoneManager milestoneManager = OneDev.getInstance(MilestoneManager.class);
 				for (String milestoneName: getModelObject()) {
 					Milestone milestone = milestoneManager.findInHierarchy(Project.get(), milestoneName);

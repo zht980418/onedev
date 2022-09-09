@@ -34,7 +34,6 @@ import io.onedev.server.web.component.MultilineLabel;
 import io.onedev.server.web.component.link.ViewStateAwarePageLink;
 import io.onedev.server.web.component.milestone.MilestoneDateLabel;
 import io.onedev.server.web.component.milestone.MilestoneStatusLabel;
-import io.onedev.server.web.component.milestone.actions.MilestoneActionsPanel;
 import io.onedev.server.web.component.tabbable.PageTab;
 import io.onedev.server.web.component.tabbable.PageTabHead;
 import io.onedev.server.web.component.tabbable.Tab;
@@ -47,7 +46,7 @@ public abstract class MilestoneDetailPage extends ProjectPage implements ScriptI
 
 	public static final String PARAM_MILESTONE = "milestone";
 	
-	protected final IModel<Milestone> milestoneModel;
+	private final IModel<Milestone> milestoneModel;
 	
 	public MilestoneDetailPage(PageParameters params) {
 		super(params);

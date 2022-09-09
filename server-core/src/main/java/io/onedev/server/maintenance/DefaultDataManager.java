@@ -35,7 +35,6 @@ import io.onedev.server.entitymanager.RoleManager;
 import io.onedev.server.entitymanager.SettingManager;
 import io.onedev.server.entitymanager.UserManager;
 import io.onedev.server.event.system.SystemStarting;
-import io.onedev.server.mail.MailManager;
 import io.onedev.server.model.EmailAddress;
 import io.onedev.server.model.LinkSpec;
 import io.onedev.server.model.Role;
@@ -50,19 +49,21 @@ import io.onedev.server.model.support.administration.GlobalIssueSetting;
 import io.onedev.server.model.support.administration.GlobalProjectSetting;
 import io.onedev.server.model.support.administration.GlobalPullRequestSetting;
 import io.onedev.server.model.support.administration.GpgSetting;
+import io.onedev.server.model.support.administration.MailSetting;
 import io.onedev.server.model.support.administration.PerformanceSetting;
 import io.onedev.server.model.support.administration.SecuritySetting;
 import io.onedev.server.model.support.administration.ServiceDeskSetting;
 import io.onedev.server.model.support.administration.SshSetting;
 import io.onedev.server.model.support.administration.SystemSetting;
-import io.onedev.server.model.support.administration.mailsetting.MailSetting;
 import io.onedev.server.model.support.administration.notificationtemplate.NotificationTemplateSetting;
 import io.onedev.server.model.support.issue.LinkSpecOpposite;
+import io.onedev.server.notification.MailManager;
 import io.onedev.server.persistence.PersistManager;
 import io.onedev.server.persistence.annotation.Sessional;
 import io.onedev.server.persistence.annotation.Transactional;
 import io.onedev.server.ssh.SshKeyUtils;
 import io.onedev.server.util.init.ManualConfig;
+import io.onedev.server.util.init.Skippable;
 import io.onedev.server.util.schedule.SchedulableTask;
 import io.onedev.server.util.schedule.TaskScheduler;
 import io.onedev.server.web.util.editablebean.NewUserBean;
@@ -137,6 +138,11 @@ public class DefaultDataManager implements DataManager, Serializable {
 			manualConfigs.add(new ManualConfig("Create Administrator Account", null, new NewUserBean()) {
 
 				@Override
+				public Skippable getSkippable() {
+					return null;
+				}
+
+				@Override
 				public void complete() {
 					NewUserBean newUserBean = (NewUserBean) getSetting();
 					User user = new User();
@@ -201,6 +207,11 @@ public class DefaultDataManager implements DataManager, Serializable {
 
 			manualConfigs.add(new ManualConfig("Specify System Setting", null, 
 					systemSetting, excludedProps) {
+	
+				@Override
+				public Skippable getSkippable() {
+					return null;
+				}
 	
 				@Override
 				public void complete() {
@@ -292,6 +303,11 @@ public class DefaultDataManager implements DataManager, Serializable {
 					setting.getValue(), new HashSet<>(), true) {
 	
 				@Override
+				public Skippable getSkippable() {
+					return null;
+				}
+	
+				@Override
 				public void complete() {
 					settingManager.saveServiceDeskSetting((ServiceDeskSetting) getSetting());
 				}
@@ -314,6 +330,11 @@ public class DefaultDataManager implements DataManager, Serializable {
 			manualConfigs.add(new ManualConfig("Specify Mail Setting", null, setting.getValue()) {
 
 				@Override
+				public Skippable getSkippable() {
+					return null;
+				}
+
+				@Override
 				public void complete() {
 					settingManager.saveMailSetting((MailSetting) getSetting());
 				}
@@ -327,6 +348,11 @@ public class DefaultDataManager implements DataManager, Serializable {
 		} else if (setting.getValue() != null && !validator.validate(setting.getValue()).isEmpty()) {
 			Serializable backupSetting = setting.getValue();
 			manualConfigs.add(new ManualConfig("Specify Backup Setting", null, backupSetting) {
+
+				@Override
+				public Skippable getSkippable() {
+					return null;
+				}
 
 				@Override
 				public void complete() {

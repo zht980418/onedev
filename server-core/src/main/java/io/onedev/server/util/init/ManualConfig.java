@@ -56,6 +56,8 @@ public abstract class ManualConfig implements Serializable {
 	public Collection<String> getExcludeProperties() {
 		return excludedProperties;
 	}
+
+	public abstract Skippable getSkippable();
 	
 	public abstract void complete();
 	

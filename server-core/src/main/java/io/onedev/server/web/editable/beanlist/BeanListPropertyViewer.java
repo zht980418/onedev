@@ -69,10 +69,7 @@ public class BeanListPropertyViewer extends Panel {
 		};
 		add(table);
 		
-		WebMarkupContainer thead = new WebMarkupContainer("thead");
-		table.add(thead);
-		
-		thead.add(new ListView<PropertyContext<Serializable>>("headers", propertyContexts) {
+		table.add(new ListView<PropertyContext<Serializable>>("headers", propertyContexts) {
 
 			@Override
 			protected void populateItem(ListItem<PropertyContext<Serializable>> item) {
@@ -82,7 +79,6 @@ public class BeanListPropertyViewer extends Panel {
 			}
 			
 		});
-		thead.setVisible(propertyContexts.size() > 1);
 		
 		table.add(new ListView<Serializable>("rows", elements) {
 

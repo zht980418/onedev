@@ -17,9 +17,6 @@
 package io.onedev.server.persistence;
 
 import java.util.concurrent.Callable;
-import java.util.concurrent.locks.Lock;
-
-import javax.annotation.Nullable;
 
 import org.hibernate.Session;
 
@@ -33,13 +30,7 @@ public interface SessionManager {
 	
 	void run(Runnable runnable);
 	
-	void runAsync(Runnable runnable, @Nullable Lock lock);
-	
 	void runAsync(Runnable runnable);
-	
-	void runAsyncAfterCommit(Runnable runnable, @Nullable Lock lock);
-	
-	void runAsyncAfterCommit(Runnable runnable);
 	
 	Session getSession();
 	

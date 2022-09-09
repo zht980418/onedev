@@ -686,10 +686,10 @@ public class GitUtils {
 								key.getPublicKey());
 						signature.update(data);
 						if (signature.verify()) {
-							if (!key.shouldVerifyDataWriter() || key.getEmailAddresses().contains(dataWriter)) 
+							if (!key.shouldVerifyDataWriter() || key.getEmailAddress().equals(dataWriter)) 
 								return new SignatureVerified(key);
 							else 
-								return new SignatureUnverified(key, "Can not verify committer email using signing key");
+								return new SignatureUnverified(key, "Email address of signing key and committer is different");
 						} else {
 							return new SignatureUnverified(key, "Invalid commit signature");
 						}

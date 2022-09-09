@@ -1,6 +1,6 @@
 package io.onedev.server.web.component.project;
 
-import java.util.List;
+import java.util.Collection;
 
 import org.apache.wicket.Component;
 import org.apache.wicket.ajax.AjaxRequestTarget;
@@ -18,9 +18,9 @@ import io.onedev.server.web.component.svg.SpriteImage;
 @SuppressWarnings("serial")
 public abstract class ProjectPicker extends DropdownLink {
 
-	private final IModel<List<Project>> projectsModel; 
+	private final IModel<Collection<Project>> projectsModel; 
 	
-	public ProjectPicker(String id, IModel<List<Project>> projectsModel) {
+	public ProjectPicker(String id, IModel<Collection<Project>> projectsModel) {
 		super(id);
 	
 		this.projectsModel = projectsModel;

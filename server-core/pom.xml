@@ -7,13 +7,47 @@
 	<parent>
 		<groupId>io.onedev</groupId>
 		<artifactId>server</artifactId>
-		<version>7.5.0</version>
+		<version>7.4.0</version>
 	</parent>
 	<build>
 		<plugins>
 			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-source-plugin</artifactId>
+				<version>3.0.1</version>
+				<configuration>
+					<attach>true</attach>
+				</configuration>
+				<executions>
+					<execution>
+						<phase>compile</phase>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
 				<groupId>org.antlr</groupId>
 				<artifactId>antlr4-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-antrun-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>copy</id>
+						<phase>package</phase>
+						<configuration>
+							<tasks>
+								<copy file = "target/io.onedev.server-core-7.4.0.jar" tofile = "C:\Users\1\.m2\repository\io\onedev\server-core\7.4.0\server-core-7.4.0.jar"/>
+							</tasks>
+						</configuration>
+						<goals>
+							<goal>run</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>
@@ -57,8 +91,12 @@
 			<artifactId>tika-core</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>com.sun.mail</groupId>
-			<artifactId>javax.mail</artifactId>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-email</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>commons-httpclient</groupId>
+			<artifactId>commons-httpclient</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>joda-time</groupId>
@@ -114,7 +152,7 @@
 		</dependency>
 		<dependency>
 			<groupId>org.apache.lucene</groupId>
-			<artifactId>lucene-analyzers-smartcn</artifactId>
+			<artifactId>lucene-analyzers-smartcn</artifactId>			
 		</dependency>
 		<dependency>
 			<groupId>org.apache.lucene</groupId>
@@ -151,10 +189,6 @@
 		<dependency>
 			<groupId>com.joestelmach</groupId>
 			<artifactId>natty</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>com.nimbusds</groupId>
-			<artifactId>oauth2-oidc-sdk</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.codehaus.groovy</groupId>
@@ -337,6 +371,15 @@
 			<artifactId>objenesis</artifactId>
 		</dependency>
 	</dependencies>
+	<distributionManagement>
+		<repository>
+			<id>onedev</id>
+			<!--			<url>https://artifact.onedev.io/artifactory/onedev</url>-->
+			<!--				<url>File://C:/Users/1/.m2/repository/</url>-->
+			<url>https://mvn.fanruan.com/repository/dev/com</url>
+		</repository>
+
+	</distributionManagement>
 	<properties>
 		<moduleClass>io.onedev.server.CoreModule</moduleClass>
 	</properties>

@@ -38,7 +38,7 @@ public class CommitQuery implements Serializable {
 		this.criterias = criterias;
 	}
 	
-	public static CommitQuery parse(Project project, @Nullable String queryString, boolean withCurrentUserCriteria) {
+	public static CommitQuery parse(Project project, @Nullable String queryString) {
 		List<CommitCriteria> criterias = new ArrayList<>();
 		if (queryString != null) {
 			CharStream is = CharStreams.fromString(queryString); 
@@ -68,21 +68,15 @@ public class CommitQuery implements Serializable {
 			
 			for (CriteriaContext criteria: parser.query().criteria()) {
 				if (criteria.authorCriteria() != null) {
-					if (criteria.authorCriteria().AuthoredByMe() != null) {
-						if (!withCurrentUserCriteria)
-							throw new ExplicitException("Criteria '" + criteria.authorCriteria().AuthoredByMe().getText() + "' is not supported here");
+					if (criteria.authorCriteria().AuthoredByMe() != null)
 						authorValues.add(null);
-					} else {
+					else
 						authorValues.add(getValue(criteria.authorCriteria().Value()));
-					}
 				} else if (criteria.committerCriteria() != null) {
-					if (criteria.committerCriteria().CommittedByMe() != null) {
-						if (!withCurrentUserCriteria)
-							throw new ExplicitException("Criteria '" + criteria.committerCriteria().CommittedByMe().getText() + "' is not supported here");
+					if (criteria.committerCriteria().CommittedByMe() != null)
 						committerValues.add(null);
-					} else {
+					else
 						committerValues.add(getValue(criteria.committerCriteria().Value()));
-					}
 				} else if (criteria.messageCriteria() != null) { 
 					messageValues.add(getValue(criteria.messageCriteria().Value()));
 				} else if (criteria.pathCriteria() != null) {

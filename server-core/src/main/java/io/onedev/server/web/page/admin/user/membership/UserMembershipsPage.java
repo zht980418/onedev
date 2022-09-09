@@ -39,7 +39,8 @@ import io.onedev.server.entitymanager.MembershipManager;
 import io.onedev.server.model.Group;
 import io.onedev.server.model.Membership;
 import io.onedev.server.persistence.dao.EntityCriteria;
-import io.onedev.server.util.Similarities;
+import io.onedev.server.util.match.MatchScoreProvider;
+import io.onedev.server.util.match.MatchScoreUtils;
 import io.onedev.server.web.WebConstants;
 import io.onedev.server.web.behavior.OnTypingDoneBehavior;
 import io.onedev.server.web.component.datatable.DefaultDataTable;
@@ -114,14 +115,14 @@ public class UserMembershipsPage extends UserPage {
 				Collections.sort(notMembersOf);
 				Collections.reverse(notMembersOf);
 				
-				notMembersOf = new Similarities<Group>(notMembersOf) {
+				notMembersOf = MatchScoreUtils.filterAndSort(notMembersOf, new MatchScoreProvider<Group>() {
 
 					@Override
-					public double getSimilarScore(Group object) {
-						return Similarities.getSimilarScore(object.getName(), term);
+					public double getMatchScore(Group object) {
+						return MatchScoreUtils.getMatchScore(object.getName(), term);
 					}
 					
-				};
+				});
 				
 				new ResponseFiller<>(response).fill(notMembersOf, page, WebConstants.PAGE_SIZE);
 			}

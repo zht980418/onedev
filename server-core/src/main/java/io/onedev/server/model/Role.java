@@ -137,7 +137,7 @@ public class Role extends AbstractEntity implements Permission, Validatable {
 		return getId().equals(OWNER_ID);
 	}
 
-	@Editable(order=200, name="Project Management", description="Administrative permission over a project")
+	@Editable(order=200)
 	public boolean isManageProject() {
 		return manageProject;
 	}
@@ -146,7 +146,7 @@ public class Role extends AbstractEntity implements Permission, Validatable {
 		this.manageProject = manageProject;
 	}
 	
-	@Editable(order=210, name="Create Child Projects", description="Create child projects under a project")
+	@Editable(order=210, name="Create Child Projects")
 	@ShowCondition("isManageProjectDisabled")
 	public boolean isCreateChildren() {
 		return createChildren;
@@ -161,8 +161,7 @@ public class Role extends AbstractEntity implements Permission, Validatable {
 		return !(boolean)EditContext.get().getInputValue("manageProject");
 	}
 
-	@Editable(order=250, name="Pull Request Management", description="Pull request administrative permission inside a project, "
-			+ "including batch operations over multiple pull requests")
+	@Editable(order=250)
 	@ShowCondition("isManageProjectDisabled")
 	public boolean isManagePullRequests() {
 		return managePullRequests;
@@ -172,8 +171,7 @@ public class Role extends AbstractEntity implements Permission, Validatable {
 		this.managePullRequests = managePullRequests;
 	}
 	
-	@Editable(order=260, name="Code Comment Management", description="Code comment administrative permission inside a project, "
-			+ "including batch operations over multiple code comments")
+	@Editable(order=260)
 	@ShowCondition("isManageProjectDisabled")
 	public boolean isManageCodeComments() {
 		return manageCodeComments;
@@ -200,8 +198,7 @@ public class Role extends AbstractEntity implements Permission, Validatable {
 				&& !(boolean)EditContext.get().getInputValue("manageCodeComments");
 	}
 	
-	@Editable(order=400, name="Issue Management", description="Issue administrative permission inside a project, including batch "
-			+ "operations over multiple issues")
+	@Editable(order=400)
 	@ShowCondition("isManageProjectDisabled")
 	public boolean isManageIssues() {
 		return manageIssues;
@@ -275,8 +272,7 @@ public class Role extends AbstractEntity implements Permission, Validatable {
 		return choices;
 	}
 
-	@Editable(order=650, name="Build Management", description="Build administrative permission for all jobs inside a project, "
-			+ "including batch operations over multiple builds")
+	@Editable(order=650)
 	@ShowCondition("isManageProjectDisabled")
 	public boolean isManageBuilds() {
 		return manageBuilds;

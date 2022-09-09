@@ -40,7 +40,6 @@ import com.google.common.collect.Lists;
 import edu.emory.mathcs.backport.java.util.Collections;
 import io.onedev.commons.loader.Listen;
 import io.onedev.commons.loader.ListenerRegistry;
-import io.onedev.commons.utils.ExplicitException;
 import io.onedev.server.entitymanager.IssueAuthorizationManager;
 import io.onedev.server.entitymanager.IssueCommentManager;
 import io.onedev.server.entitymanager.IssueFieldManager;
@@ -77,7 +76,6 @@ import io.onedev.server.model.support.issue.NamedIssueQuery;
 import io.onedev.server.model.support.issue.StateSpec;
 import io.onedev.server.model.support.issue.changedata.IssueChangeData;
 import io.onedev.server.model.support.issue.field.spec.FieldSpec;
-import io.onedev.server.persistence.SessionManager;
 import io.onedev.server.persistence.TransactionManager;
 import io.onedev.server.persistence.annotation.Sessional;
 import io.onedev.server.persistence.annotation.Transactional;
@@ -154,8 +152,6 @@ public class DefaultIssueManager extends BaseEntityManager<Issue> implements Iss
 	
 	private final IssueLinkManager linkManager;
 	
-	private final SessionManager sessionManager;
-	
 	private final Map<Long, Map<Long, Long>> idCache = new HashMap<>();
 	
 	private final ReadWriteLock idCacheLock = new ReentrantReadWriteLock();
@@ -168,7 +164,7 @@ public class DefaultIssueManager extends BaseEntityManager<Issue> implements Iss
 			RoleManager roleManager, AttachmentStorageManager attachmentStorageManager, 
 			IssueCommentManager commentManager, EntityReferenceManager entityReferenceManager, 
 			LinkSpecManager linkSpecManager, IssueLinkManager linkManager, 
-			IssueAuthorizationManager authorizationManager, SessionManager sessionManager) {
+			IssueAuthorizationManager authorizationManager) {
 		super(dao);
 		this.fieldManager = fieldManager;
 		this.queryPersonalizationManager = queryPersonalizationManager;
@@ -184,7 +180,6 @@ public class DefaultIssueManager extends BaseEntityManager<Issue> implements Iss
 		this.commentManager = commentManager;
 		this.entityReferenceManager = entityReferenceManager;
 		this.authorizationManager = authorizationManager;
-		this.sessionManager = sessionManager;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -248,7 +243,8 @@ public class DefaultIssueManager extends BaseEntityManager<Issue> implements Iss
 		issue.setNumberScope(issue.getProject().getForkRoot());
 		issue.setNumber(getNextNumber(issue.getNumberScope()));
 		
-		issue.setLastUpdate(new IssueOpened(issue).getLastUpdate());
+		IssueOpened event = new IssueOpened(issue);
+		issue.setLastUpdate(event.getLastUpdate());
 		
 		save(issue);
 
@@ -259,19 +255,9 @@ public class DefaultIssueManager extends BaseEntityManager<Issue> implements Iss
 		IssueAuthorization authorization = new IssueAuthorization();
 		authorization.setIssue(issue);
 		authorization.setUser(issue.getSubmitter());
-		issue.getAuthorizations().add(authorization);
 		authorizationManager.save(authorization);
 		
-		Long issueId = issue.getId();
-		sessionManager.runAsyncAfterCommit(new Runnable() {
-
-			@Override
-			public void run() {
-				listenerRegistry.post(new IssueOpened(load(issueId)));
-			}
-			
-		});
-		
+		listenerRegistry.post(event);
 	}
 
 	@Transactional
@@ -407,7 +393,7 @@ public class DefaultIssueManager extends BaseEntityManager<Issue> implements Iss
 		} else if (!SecurityUtils.isAdministrator()) {
 			Collection<Project> projects = projectManager.getPermittedProjects(new AccessProject()); 
 			if (!projects.isEmpty()) { 
-				Collection<Long> projectIds = projects.stream().map(it->it.getId()).collect(Collectors.toSet());
+				Collection<Long> projectIds = projects.stream().map(it->it.getId()).collect(Collectors.toList());
 				predicates.add(builder.or(
 						getPredicate(builder, root, projectIds), 
 						getAuthorizationPredicate(query, builder, root, projectIds)));
@@ -439,7 +425,7 @@ public class DefaultIssueManager extends BaseEntityManager<Issue> implements Iss
 			Predicate userPredicate = builder.equal(authorizationRoot.get(IssueAuthorization.PROP_USER), user);
 			Path<Long> projectIdPath = root.get(Issue.PROP_PROJECT).get(Project.PROP_ID);
 			return builder.and(
-					Criteria.forManyValues(builder, projectIdPath, projectIds, projectManager.getIds()), 
+					Criteria.forManyValues(builder, projectIdPath, projectIds, projectManager.getProjectIds()), 
 					builder.exists(authorizationQuery.where(issuePredicate, userPredicate))); 
 		} else {
 			return builder.disjunction();
@@ -464,7 +450,7 @@ public class DefaultIssueManager extends BaseEntityManager<Issue> implements Iss
 	}
 	
 	private Predicate getPredicate(CriteriaBuilder builder, Root<Issue> root, Collection<Long> projectIds) {
-		Collection<Long> allIds = projectManager.getIds();
+		Collection<Long> allIds = projectManager.getProjectIds();
 		Path<Project> projectPath = root.get(Issue.PROP_PROJECT);
 		Path<Long> projectIdPath = projectPath.get(Project.PROP_ID);
 		if (SecurityUtils.isAdministrator()) {
@@ -1023,7 +1009,7 @@ public class DefaultIssueManager extends BaseEntityManager<Issue> implements Iss
 	
 	private Predicate getSubtreePredicate(CriteriaBuilder builder, Path<Project> projectPath, Project project) {
 		Collection<Long> subtreeIds = projectManager.getSubtreeIds(project.getId());
-		Collection<Long> allIds = projectManager.getIds();
+		Collection<Long> allIds = projectManager.getProjectIds();
 		return Criteria.forManyValues(builder, projectPath.get(Project.PROP_ID), subtreeIds, allIds);
 	}
 	
@@ -1094,8 +1080,6 @@ public class DefaultIssueManager extends BaseEntityManager<Issue> implements Iss
 	public void saveDescription(Issue issue, @Nullable String description) {
 		String prevDescription = issue.getDescription();
 		if (!Objects.equal(description, prevDescription)) {
-			if (description != null && description.length() > Issue.MAX_DESCRIPTION_LEN)
-				throw new ExplicitException("Description too long"); 
 			issue.setDescription(description);
 			entityReferenceManager.addReferenceChange(issue, description);
 			save(issue);

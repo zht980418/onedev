@@ -15,10 +15,6 @@ import io.onedev.server.util.validation.PullRequestQueryValidator;
 @Constraint(validatedBy=PullRequestQueryValidator.class) 
 public @interface PullRequestQuery {
 	
-	boolean withCurrentUserCriteria() default false;
-	
-	boolean withOrder() default true;
-	
     String message() default "";
 
     Class<?>[] groups() default {};

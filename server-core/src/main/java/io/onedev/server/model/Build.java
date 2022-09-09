@@ -990,8 +990,4 @@ public class Build extends AbstractEntity implements Referenceable, AttachmentSt
 		return getArtifactsDir().exists() && getArtifactsDir().listFiles().length != 0;
 	}
 	
-	public static String getSerialLockName(Long buildId) {
-		return "build-" + buildId + "-serial";
-	}
-	
 }

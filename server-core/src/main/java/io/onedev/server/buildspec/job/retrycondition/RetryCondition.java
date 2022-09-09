@@ -35,13 +35,13 @@ import io.onedev.server.util.criteria.Criteria;
 import io.onedev.server.util.criteria.NotCriteria;
 import io.onedev.server.util.criteria.OrCriteria;
 
-public class RetryCondition extends Criteria<RetryContext> {
+public class RetryCondition extends Criteria<Build> {
 
 	private static final long serialVersionUID = 1L;
 	
-	private final Criteria<RetryContext> criteria;
+	private final Criteria<Build> criteria;
 	
-	public RetryCondition(Criteria<RetryContext> criteria) {
+	public RetryCondition(Criteria<Build> criteria) {
 		this.criteria = criteria;
 	}
 
@@ -50,12 +50,12 @@ public class RetryCondition extends Criteria<RetryContext> {
 	}
 	
 	@Override
-	public Predicate getPredicate(CriteriaQuery<?> query, From<RetryContext, RetryContext> from, CriteriaBuilder builder) {
+	public Predicate getPredicate(CriteriaQuery<?> query, From<Build, Build> from, CriteriaBuilder builder) {
 		throw new UnsupportedOperationException();
 	}
 	
-	public boolean matches(RetryContext context) {
-		return criteria.matches(context);
+	public boolean matches(Build build) {
+		return criteria.matches(build);
 	}
 	
 	public static RetryCondition parse(Job job, String conditionString) {
@@ -77,20 +77,20 @@ public class RetryCondition extends Criteria<RetryContext> {
 		parser.setErrorHandler(new BailErrorStrategy());
 		ConditionContext conditionContext = parser.condition();
 
-		Criteria<RetryContext> criteria;
+		Criteria<Build> criteria;
 		
 		if (conditionContext.Never() != null) {
 			criteria = new NeverCriteria();
 		} else {
-			criteria = new RetryConditionBaseVisitor<Criteria<RetryContext>>() {
+			criteria = new RetryConditionBaseVisitor<Criteria<Build>>() {
 	
 				@Override
-				public Criteria<RetryContext> visitParensCriteria(ParensCriteriaContext ctx) {
+				public Criteria<Build> visitParensCriteria(ParensCriteriaContext ctx) {
 					return visit(ctx.criteria()).withParens(true);
 				}
 	
 				@Override
-				public Criteria<RetryContext> visitFieldOperatorCriteria(FieldOperatorCriteriaContext ctx) {
+				public Criteria<Build> visitFieldOperatorCriteria(FieldOperatorCriteriaContext ctx) {
 					String fieldName = getValue(ctx.Quoted().getText());
 					int operator = ctx.operator.getType();
 					checkField(job, fieldName, operator);
@@ -98,7 +98,7 @@ public class RetryCondition extends Criteria<RetryContext> {
 				}
 				
 				@Override
-				public Criteria<RetryContext> visitFieldOperatorValueCriteria(FieldOperatorValueCriteriaContext ctx) {
+				public Criteria<Build> visitFieldOperatorValueCriteria(FieldOperatorValueCriteriaContext ctx) {
 					String fieldName = getValue(ctx.Quoted(0).getText());
 					String fieldValue = getValue(ctx.Quoted(1).getText());
 					int operator = ctx.operator.getType();
@@ -114,24 +114,24 @@ public class RetryCondition extends Criteria<RetryContext> {
 				}
 				
 				@Override
-				public Criteria<RetryContext> visitOrCriteria(OrCriteriaContext ctx) {
-					List<Criteria<RetryContext>> childCriterias = new ArrayList<>();
+				public Criteria<Build> visitOrCriteria(OrCriteriaContext ctx) {
+					List<Criteria<Build>> childCriterias = new ArrayList<>();
 					for (CriteriaContext childCtx: ctx.criteria())
 						childCriterias.add(visit(childCtx));
-					return new OrCriteria<RetryContext>(childCriterias);
+					return new OrCriteria<Build>(childCriterias);
 				}
 	
 				@Override
-				public Criteria<RetryContext> visitAndCriteria(AndCriteriaContext ctx) {
-					List<Criteria<RetryContext>> childCriterias = new ArrayList<>();
+				public Criteria<Build> visitAndCriteria(AndCriteriaContext ctx) {
+					List<Criteria<Build>> childCriterias = new ArrayList<>();
 					for (CriteriaContext childCtx: ctx.criteria())
 						childCriterias.add(visit(childCtx));
-					return new AndCriteria<RetryContext>(childCriterias);
+					return new AndCriteria<Build>(childCriterias);
 				}
 	
 				@Override
-				public Criteria<RetryContext> visitNotCriteria(NotCriteriaContext ctx) {
-					return new NotCriteria<RetryContext>(visit(ctx.criteria()));
+				public Criteria<Build> visitNotCriteria(NotCriteriaContext ctx) {
+					return new NotCriteria<Build>(visit(ctx.criteria()));
 				}
 	
 			}.visit(conditionContext.criteria());

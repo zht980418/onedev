@@ -45,15 +45,14 @@ public class PasswordAuthorizingRealm extends AbstractAuthorizingRealm {
     
     private final SshKeyManager sshKeyManager;
     
-    private final EmailAddressManager emailAddressManager;
-    
 	@Inject
     public PasswordAuthorizingRealm(UserManager userManager, SettingManager settingManager, 
     		MembershipManager membershipManager, GroupManager groupManager, 
     		ProjectManager projectManager, SessionManager sessionManager, 
     		TransactionManager transactionManager, SshKeyManager sshKeyManager, 
     		PasswordService passwordService, EmailAddressManager emailAddressManager) {
-		super(userManager, groupManager, projectManager, sessionManager, settingManager);
+		super(userManager, groupManager, projectManager, sessionManager, 
+				settingManager, emailAddressManager);
 		
 	    PasswordMatcher passwordMatcher = new PasswordMatcher();
 	    passwordMatcher.setPasswordService(passwordService);
@@ -62,7 +61,6 @@ public class PasswordAuthorizingRealm extends AbstractAuthorizingRealm {
     	this.transactionManager = transactionManager;
     	this.membershipManager = membershipManager;
     	this.sshKeyManager = sshKeyManager;
-    	this.emailAddressManager = emailAddressManager;
     }
 
 	@Override
@@ -174,10 +172,10 @@ public class PasswordAuthorizingRealm extends AbstractAuthorizingRealm {
 		    					return newUser(userNameOrEmailAddressValue, authenticated, authenticator.getDefaultGroup());
 		    				}
 		    			} else {
-		    	            throw new UnknownAccountException("Invalid credentials");
+		    	            throw new UnknownAccountException("Unknown user");
 		    			}
 			    	} else {
-	    	            throw new UnknownAccountException("Invalid credentials");
+	    	            throw new UnknownAccountException("Unknown user");
 			    	}
 				} catch (Exception e) {
 	    			if (e instanceof AuthenticationException) {

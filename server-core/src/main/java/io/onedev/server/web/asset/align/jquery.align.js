@@ -19,10 +19,6 @@
 			$this.addClass("autosuit");
 
         	var $parent = $this.parent();
-
-			if ($parent.length == 0)
-				return
-				
         	if ($parent.css("position") != "relative") {
         		$parent.css("position", "relative");
         	}

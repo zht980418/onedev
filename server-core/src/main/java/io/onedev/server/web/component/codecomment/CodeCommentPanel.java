@@ -51,7 +51,6 @@ import io.onedev.server.model.support.CompareContext;
 import io.onedev.server.security.SecurityUtils;
 import io.onedev.server.util.DateUtils;
 import io.onedev.server.util.UrlUtils;
-import io.onedev.server.util.facade.UserCache;
 import io.onedev.server.web.ajaxlistener.ConfirmClickListener;
 import io.onedev.server.web.ajaxlistener.ConfirmLeaveListener;
 import io.onedev.server.web.behavior.WebSocketObserver;
@@ -87,10 +86,6 @@ public abstract class CodeCommentPanel extends Panel {
 
 	public CodeComment getComment() {
 		return OneDev.getInstance(CodeCommentManager.class).load(commentId);
-	}
-	
-	private UserManager getUserManager() {
-		return OneDev.getInstance(UserManager.class);
 	}
 
 	private WebMarkupContainer newCommentOrReplyContainer() {
@@ -186,7 +181,7 @@ public abstract class CodeCommentPanel extends Panel {
 
 					@Override
 					protected List<User> getMentionables() {
-						return CodeCommentPanel.this.getMentionables();
+						return OneDev.getInstance(UserManager.class).queryAndSort(getComment().getParticipants());
 					}
 					
 				};
@@ -234,19 +229,12 @@ public abstract class CodeCommentPanel extends Panel {
 					protected void onSubmit(AjaxRequestTarget target, Form<?> form) {
 						super.onSubmit(target, form);
 
-						String content = contentInput.getModelObject();
-						if (content.length() > CodeComment.MAX_CONTENT_LEN) {
-							error("Comment too long");
-							target.add(feedback);
-						} else {
-							CodeComment comment = getComment();
-							
-							comment.setContent(contentInput.getModelObject());
-							WebMarkupContainer commentOrReplyContainer = newCommentOrReplyContainer();
-							editFragment.replaceWith(commentOrReplyContainer);
-							target.add(commentOrReplyContainer);
-							onSaveComment(target, comment);
-						}
+						CodeComment comment = getComment();
+						comment.setContent(contentInput.getModelObject());
+						WebMarkupContainer commentOrReplyContainer = newCommentOrReplyContainer();
+						editFragment.replaceWith(commentOrReplyContainer);
+						target.add(commentOrReplyContainer);
+						onSaveComment(target, comment);
 					}
 
 				});
@@ -493,7 +481,7 @@ public abstract class CodeCommentPanel extends Panel {
 
 			@Override
 			protected List<User> getMentionables() {
-				return CodeCommentPanel.this.getMentionables();
+				return OneDev.getInstance(UserManager.class).queryAndSort(getComment().getParticipants());
 			}
 			
 		};
@@ -544,34 +532,28 @@ public abstract class CodeCommentPanel extends Panel {
 			@Override
 			protected void onSubmit(AjaxRequestTarget target, Form<?> form) {
 				super.onSubmit(target, form);
-				
-				String content = contentInput.getModelObject();
-				if (content.length() > CodeCommentReply.MAX_CONTENT_LEN) {
-					error("Comment too long");
-					target.add(feedback);
-				} else {
-					if (resolved == null) {
-						CodeCommentReply reply = new CodeCommentReply();
-						reply.setComment(getComment());
-						reply.setDate(new Date());
-						reply.setUser(SecurityUtils.getUser());
-						reply.setContent(content);
-						
-						onSaveCommentReply(target, reply);
-					} else {
-						CodeCommentStatusChange change = new CodeCommentStatusChange();
-						change.setComment(getComment());
-						change.setDate(new Date());
-						change.setUser(SecurityUtils.getUser());
-						change.setResolved(resolved);
-						
-						onSaveCommentStatusChange(target, change, contentInput.getModelObject());
-					}
+
+				if (resolved == null) {
+					CodeCommentReply reply = new CodeCommentReply();
+					reply.setComment(getComment());
+					reply.setDate(new Date());
+					reply.setUser(SecurityUtils.getUser());
+					reply.setContent(contentInput.getModelObject());
 					
-					WebMarkupContainer actionsContainer = newActionsContainer();
-					editFragment.replaceWith(actionsContainer);
-					target.add(actionsContainer);
+					onSaveCommentReply(target, reply);
+				} else {
+					CodeCommentStatusChange change = new CodeCommentStatusChange();
+					change.setComment(getComment());
+					change.setDate(new Date());
+					change.setUser(SecurityUtils.getUser());
+					change.setResolved(resolved);
+					
+					onSaveCommentStatusChange(target, change, contentInput.getModelObject());
 				}
+				
+				WebMarkupContainer actionsContainer = newActionsContainer();
+				editFragment.replaceWith(actionsContainer);
+				target.add(actionsContainer);
 			}
 
 		};
@@ -630,8 +612,8 @@ public abstract class CodeCommentPanel extends Panel {
 				fragment.add(new Label("action", "resolved"));
 			else
 				fragment.add(new Label("action", "unresolved"));
-			fragment.add(new Label("date", DateUtils.formatAge(getChange().getDate()))
-					.add(new AttributeAppender("title", DateUtils.formatDateTime(getChange().getDate()))));
+			fragment.add(new Label("date", DateUtils.formatAge(getComment().getCreateDate()))
+					.add(new AttributeAppender("title", DateUtils.formatDateTime(getComment().getCreateDate()))));
 			if (isContextDifferent(getChange().getCompareContext())) {
 				String url = OneDev.getInstance(UrlManager.class).urlFor(getChange());
 				fragment.add(new ExternalLink("context", UrlUtils.makeRelative(url)) {
@@ -673,13 +655,6 @@ public abstract class CodeCommentPanel extends Panel {
 			return getChange().getUser();
 		}
 
-	}
-	
-	private List<User> getMentionables() {
-		UserCache cache = getUserManager().cloneCache();		
-		List<User> users = new ArrayList<>(cache.getUsers());
-		users.sort(cache.comparingDisplayName(getComment().getParticipants()));
-		return users;
 	}
 	
 	public class CodeCommentReplyActivity implements CodeCommentActivity {
@@ -787,7 +762,7 @@ public abstract class CodeCommentPanel extends Panel {
 
 						@Override
 						protected List<User> getMentionables() {
-							return CodeCommentPanel.this.getMentionables();
+							return OneDev.getInstance(UserManager.class).queryAndSort(getComment().getParticipants());
 						}
 
 					};
@@ -827,20 +802,15 @@ public abstract class CodeCommentPanel extends Panel {
 						@Override
 						protected void onSubmit(AjaxRequestTarget target, Form<?> form) {
 							super.onSubmit(target, form);
+
+							CodeCommentReply reply = getReply();
+							reply.setContent(contentInput.getModelObject());
+							onSaveCommentReply(target, reply);
+							reply.setContent(contentInput.getModelObject());
 							
-							String content = contentInput.getModelObject();
-							if (content.length() > CodeCommentReply.MAX_CONTENT_LEN) {
-								error("Comment too long");
-								target.add(feedback);
-							} else {
-								CodeCommentReply reply = getReply();
-								reply.setContent(content);
-								onSaveCommentReply(target, reply);
-								
-								Component activityContainer = new CodeCommentReplyActivity(reply).render(componentId);
-								editFragment.replaceWith(activityContainer);
-								target.add(activityContainer);
-							}
+							Component activityContainer = new CodeCommentReplyActivity(reply).render(componentId);
+							editFragment.replaceWith(activityContainer);
+							target.add(activityContainer);
 						}
 
 					}.add(new Label("label", "Save")));

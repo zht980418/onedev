@@ -86,6 +86,7 @@ import io.onedev.server.model.Project;
 import io.onedev.server.model.PullRequest;
 import io.onedev.server.model.User;
 import io.onedev.server.persistence.SessionManager;
+import io.onedev.server.persistence.TransactionManager;
 import io.onedev.server.search.code.CodeIndexManager;
 import io.onedev.server.search.code.CodeSearchManager;
 import io.onedev.server.search.code.CommitIndexed;
@@ -111,7 +112,7 @@ import io.onedev.server.web.component.menu.MenuItem;
 import io.onedev.server.web.component.menu.MenuLink;
 import io.onedev.server.web.component.modal.ModalLink;
 import io.onedev.server.web.component.modal.ModalPanel;
-import io.onedev.server.web.component.revision.RevisionPicker;
+import io.onedev.server.web.component.revisionpicker.RevisionPicker;
 import io.onedev.server.web.page.project.ProjectPage;
 import io.onedev.server.web.page.project.blob.navigator.BlobNavigator;
 import io.onedev.server.web.page.project.blob.render.BlobRenderContext;
@@ -1413,14 +1414,21 @@ public class ProjectBlobPage extends ProjectPage implements BlobRenderContext,
 			OneDev.getInstance(PullRequestUpdateManager.class).checkUpdate(request);
 		}
 		
-		OneDev.getInstance(SessionManager.class).runAsyncAfterCommit(new Runnable() {
+		OneDev.getInstance(TransactionManager.class).runAfterCommit(new Runnable() {
 
 			@Override
 			public void run() {
-				Project project = OneDev.getInstance(ProjectManager.class).load(projectId);
-				project.cacheObjectId(branch, newCommitId);
-				RefUpdated refUpdated = new RefUpdated(project, refName, oldCommitId, newCommitId);
-				OneDev.getInstance(ListenerRegistry.class).post(refUpdated);
+				OneDev.getInstance(SessionManager.class).runAsync(new Runnable() {
+
+					@Override
+					public void run() {
+						Project project = OneDev.getInstance(ProjectManager.class).load(projectId);
+						project.cacheObjectId(branch, newCommitId);
+						RefUpdated refUpdated = new RefUpdated(project, refName, oldCommitId, newCommitId);
+						OneDev.getInstance(ListenerRegistry.class).post(refUpdated);
+					}
+					
+				});
 			}
 			
 		});
@@ -1607,10 +1615,6 @@ public class ProjectBlobPage extends ProjectPage implements BlobRenderContext,
 
 	@Override
 	public String appendRaw(String url) {
-		return doAppendRaw(url);
-	}
-
-	public static String doAppendRaw(String url) {
 		try {
 			URIBuilder builder;
 			builder = new URIBuilder(url);
@@ -1623,7 +1627,7 @@ public class ProjectBlobPage extends ProjectPage implements BlobRenderContext,
 			throw new RuntimeException(e);
 		}
 	}
-	
+
 	@Override
 	protected String getPageTitle() {
 		if (state.blobIdent.revision == null)

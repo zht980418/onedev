@@ -5,8 +5,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-import io.onedev.server.OneDev;
-import io.onedev.server.entitymanager.UrlManager;
 import io.onedev.server.event.ProjectEvent;
 import io.onedev.server.model.Group;
 import io.onedev.server.model.Issue;
@@ -33,11 +31,6 @@ public abstract class IssueEvent extends ProjectEvent {
 	
 	public Map<String, Group> getNewGroups() {
 		return new HashMap<>();
-	}
-	
-	@Override
-	public String getUrl() {
-		return OneDev.getInstance(UrlManager.class).urlFor(issue);
 	}
 	
 }

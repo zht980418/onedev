@@ -109,7 +109,7 @@ public class CodeCommentResource {
 		
     	CodeCommentQuery parsedQuery;
 		try {
-			parsedQuery = CodeCommentQuery.parse(null, query, true);
+			parsedQuery = CodeCommentQuery.parse(null, query);
 		} catch (Exception e) {
 			throw new InvalidParamException("Error parsing query", e);
 		}

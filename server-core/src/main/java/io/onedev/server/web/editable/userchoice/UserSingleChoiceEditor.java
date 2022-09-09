@@ -1,6 +1,7 @@
 package io.onedev.server.web.editable.userchoice;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -20,8 +21,6 @@ import io.onedev.server.entitymanager.UserManager;
 import io.onedev.server.model.User;
 import io.onedev.server.util.ComponentContext;
 import io.onedev.server.util.ReflectionUtils;
-import io.onedev.server.util.facade.UserCache;
-import io.onedev.server.util.facade.UserFacade;
 import io.onedev.server.web.component.user.choice.UserSingleChoice;
 import io.onedev.server.web.editable.PropertyDescriptor;
 import io.onedev.server.web.editable.PropertyEditor;
@@ -46,9 +45,7 @@ public class UserSingleChoiceEditor extends PropertyEditor<String> {
 	protected void onInitialize() {
 		super.onInitialize();
 
-		UserCache cache = getUserManager().cloneCache();
-		
-		List<Long> choiceIds;
+		List<User> choices = new ArrayList<>();
 		
 		ComponentContext componentContext = new ComponentContext(this);
 		ComponentContext.push(componentContext);
@@ -56,32 +53,30 @@ public class UserSingleChoiceEditor extends PropertyEditor<String> {
 			UserChoice userChoice = descriptor.getPropertyGetter().getAnnotation(UserChoice.class);
 			Preconditions.checkNotNull(userChoice);
 			if (userChoice.value().length() != 0) {
-				List<User> users = (List<User>) ReflectionUtils
-						.invokeStaticMethod(descriptor.getBeanClass(), userChoice.value());
-				choiceIds = users.stream().map(it->it.getId()).collect(Collectors.toList());
+				choices.addAll((List<User>)ReflectionUtils
+						.invokeStaticMethod(descriptor.getBeanClass(), userChoice.value()));
 			} else {
-				choiceIds = new ArrayList<>(cache.keySet());
-				choiceIds.removeIf(it->it<0);
-				choiceIds.sort(new Comparator<Long>() {
-
-					@Override
-					public int compare(Long o1, Long o2) {
-						return cache.get(o1).getDisplayName().compareTo(cache.get(o2).getDisplayName());
-					}
-					
-				});
+				choices.addAll(getUserManager().query());
+				choices.sort(Comparator.comparing(User::getDisplayName));
 			}
 		} finally {
 			ComponentContext.pop();
 		}
 		
-		AtomicReference<Long> selectionId = new AtomicReference<>(null);
+		User selection;
+		if (getModelObject() != null)
+			selection = getUserManager().findByName(getModelObject());
+		else
+			selection = null;
 		
-		if (getModelObject() != null) {
-			UserFacade user = cache.findByName(getModelObject());
-			if (user != null && choiceIds.contains(user.getId()))
-				selectionId.set(user.getId());
-		}
+		if (selection != null && !choices.contains(selection))
+			selection = null;
+		
+		List<Long> choiceIds = choices.stream().map(it->it.getId()).collect(Collectors.toList());
+		
+		AtomicReference<Long> selectionId = new AtomicReference<>(null);
+		if (selection != null)
+			selectionId.set(selection.getId());
 		
     	input = new UserSingleChoice("input", new IModel<User>() {
 
@@ -99,11 +94,11 @@ public class UserSingleChoiceEditor extends PropertyEditor<String> {
 				selectionId.set(User.idOf(object));
 			}
     		
-    	}, new LoadableDetachableModel<List<User>>() {
+    	}, new LoadableDetachableModel<Collection<User>>() {
 
 			@Override
-			protected List<User> load() {
-				return choiceIds.stream().map(it -> getUserManager().load(it)).collect(Collectors.toList());
+			protected Collection<User> load() {
+				return choiceIds.stream().map(it-> getUserManager().load(it)).collect(Collectors.toList());
 			}
     		
     	}) {

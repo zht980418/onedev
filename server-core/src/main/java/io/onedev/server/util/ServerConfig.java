@@ -30,6 +30,14 @@ public interface ServerConfig {
 	File getTrustCertsDir();
 	
 	/**
+	 * Get web session timeout in seconds.
+	 * <p>
+	 * @return
+	 * 			web session timeout in seconds
+	 */
+	int getSessionTimeout();
+
+	/**
      * Get ssh port configured for the server.
      * <p> 
      * @return

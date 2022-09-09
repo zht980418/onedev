@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.validation.constraints.NotNull;
@@ -113,20 +112,6 @@ public class RepositoryResource {
 			throw new RuntimeException(e);
 		}
 		return branchNames;
-	}
-	
-	@Api(order=15, description="Get default branch. Return status code 204 if no default branch "
-			+ "(repository not initialized)")
-	@Path("/{projectId}/default-branch")
-	@GET
-	@Nullable
-	public String getDefaultBranch(@PathParam("projectId") Long projectId) {
-		Project project = projectManager.load(projectId);
-		if (!SecurityUtils.canReadCode(project)) {
-			throw new UnauthorizedException();
-		}
-
-		return project.getDefaultBranch();
 	}
 	
 	@Api(order=20, description="Get specified branch")
@@ -295,7 +280,7 @@ public class RepositoryResource {
 
     	CommitQuery parsedQuery;
 		try {
-			parsedQuery = CommitQuery.parse(project, query, true);
+			parsedQuery = CommitQuery.parse(project, query);
 		} catch (Exception e) {
 			throw new InvalidParamException("Error parsing query", e);
 		}

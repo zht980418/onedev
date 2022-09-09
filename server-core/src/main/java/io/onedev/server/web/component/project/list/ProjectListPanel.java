@@ -1,13 +1,13 @@
 package io.onedev.server.web.component.project.list;
 
+import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import javax.annotation.Nullable;
@@ -36,14 +36,19 @@ import org.apache.wicket.markup.html.basic.Label;
 import org.apache.wicket.markup.html.form.Form;
 import org.apache.wicket.markup.html.form.TextField;
 import org.apache.wicket.markup.html.link.BookmarkablePageLink;
+import org.apache.wicket.markup.html.link.Link;
+import org.apache.wicket.markup.html.list.ListItem;
+import org.apache.wicket.markup.html.list.ListView;
 import org.apache.wicket.markup.html.panel.Fragment;
 import org.apache.wicket.markup.html.panel.Panel;
 import org.apache.wicket.markup.repeater.Item;
+import org.apache.wicket.model.AbstractReadOnlyModel;
 import org.apache.wicket.model.IModel;
 import org.apache.wicket.model.LoadableDetachableModel;
 import org.apache.wicket.model.Model;
 import org.apache.wicket.request.cycle.RequestCycle;
 import org.apache.wicket.request.mapper.parameter.PageParameters;
+import org.eclipse.jgit.lib.Constants;
 
 import io.onedev.commons.codeassist.parser.TerminalExpect;
 import io.onedev.commons.utils.ExplicitException;
@@ -55,22 +60,27 @@ import io.onedev.server.entitymanager.PullRequestManager;
 import io.onedev.server.entitymanager.SettingManager;
 import io.onedev.server.imports.ProjectImporter;
 import io.onedev.server.imports.ProjectImporterContribution;
-import io.onedev.server.model.Build;
+import io.onedev.server.infomanager.CommitInfoManager;
 import io.onedev.server.model.Project;
-import io.onedev.server.model.PullRequest;
 import io.onedev.server.model.support.administration.GlobalIssueSetting;
+import io.onedev.server.model.support.issue.StateSpec;
 import io.onedev.server.search.entity.EntitySort;
+import io.onedev.server.search.entity.build.BuildQuery;
+import io.onedev.server.search.entity.build.StatusCriteria;
+import io.onedev.server.search.entity.issue.IssueQuery;
+import io.onedev.server.search.entity.issue.IssueQueryLexer;
+import io.onedev.server.search.entity.issue.StateCriteria;
 import io.onedev.server.search.entity.project.ChildrenOfCriteria;
 import io.onedev.server.search.entity.project.NameCriteria;
 import io.onedev.server.search.entity.project.PathCriteria;
 import io.onedev.server.search.entity.project.ProjectQuery;
+import io.onedev.server.search.entity.pullrequest.PullRequestQuery;
 import io.onedev.server.security.SecurityUtils;
 import io.onedev.server.security.permission.CreateChildren;
 import io.onedev.server.util.DateUtils;
 import io.onedev.server.util.ProjectBuildStats;
 import io.onedev.server.util.ProjectIssueStats;
 import io.onedev.server.util.ProjectPullRequestStats;
-import io.onedev.server.util.facade.ProjectCache;
 import io.onedev.server.util.facade.ProjectFacade;
 import io.onedev.server.web.WebConstants;
 import io.onedev.server.web.WebSession;
@@ -87,16 +97,18 @@ import io.onedev.server.web.component.orderedit.OrderEditPanel;
 import io.onedev.server.web.component.project.avatar.ProjectAvatar;
 import io.onedev.server.web.component.project.childrentree.ProjectChildrenTree;
 import io.onedev.server.web.component.project.selector.ProjectSelector;
-import io.onedev.server.web.component.project.stats.build.BuildStatsPanel;
-import io.onedev.server.web.component.project.stats.code.CodeStatsPanel;
-import io.onedev.server.web.component.project.stats.issue.IssueStatsPanel;
-import io.onedev.server.web.component.project.stats.pullrequest.PullRequestStatsPanel;
 import io.onedev.server.web.component.savedquery.SavedQueriesClosed;
 import io.onedev.server.web.component.savedquery.SavedQueriesOpened;
 import io.onedev.server.web.page.project.NewProjectPage;
+import io.onedev.server.web.page.project.branches.ProjectBranchesPage;
+import io.onedev.server.web.page.project.builds.ProjectBuildsPage;
 import io.onedev.server.web.page.project.children.ProjectChildrenPage;
+import io.onedev.server.web.page.project.commits.ProjectCommitsPage;
 import io.onedev.server.web.page.project.dashboard.ProjectDashboardPage;
 import io.onedev.server.web.page.project.imports.ProjectImportPage;
+import io.onedev.server.web.page.project.issues.list.ProjectIssueListPage;
+import io.onedev.server.web.page.project.pullrequests.ProjectPullRequestsPage;
+import io.onedev.server.web.page.project.tags.ProjectTagsPage;
 import io.onedev.server.web.util.LoadableDetachableDataProvider;
 import io.onedev.server.web.util.PagingHistorySupport;
 import io.onedev.server.web.util.QuerySaveSupport;
@@ -112,9 +124,11 @@ public class ProjectListPanel extends Panel {
 
 		@Override
 		protected ProjectQuery load() {
-			ProjectQuery baseQuery = getBaseQuery();
+			ProjectQuery baseQuery;
 			if (getParentProject() != null)
-				baseQuery = ProjectQuery.merge(baseQuery, new ProjectQuery(new ChildrenOfCriteria(getParentProject().getPath())));
+				baseQuery = new ProjectQuery(new ChildrenOfCriteria(getParentProject().getPath()));
+			else
+				baseQuery = new ProjectQuery();
 			return parse(queryStringModel.getObject(), baseQuery);
 		}
 		
@@ -332,10 +346,10 @@ public class ProjectListPanel extends Panel {
 
 							@Override
 							protected Component newContent(String id, FloatingPanel dropdown2) {
-								return new ProjectSelector(id, new LoadableDetachableModel<List<Project>>() {
+								return new ProjectSelector(id, new LoadableDetachableModel<Collection<Project>>() {
 				
 									@Override
-									protected List<Project> load() {
+									protected Collection<Project> load() {
 										return getTargetProjects();
 									}
 									
@@ -591,10 +605,10 @@ public class ProjectListPanel extends Panel {
 
 							@Override
 							protected Component newContent(String id, FloatingPanel dropdown2) {
-								return new ProjectSelector(id, new LoadableDetachableModel<List<Project>>() {
+								return new ProjectSelector(id, new LoadableDetachableModel<Collection<Project>>() {
 				
 									@Override
-									protected List<Project> load() {
+									protected Collection<Project> load() {
 										return getTargetProjects();
 									}
 									
@@ -845,10 +859,17 @@ public class ProjectListPanel extends Panel {
 				return menuItems;
 			}
 			
-			private List<Project> getTargetProjects() {
-				ProjectCache cache = getProjectManager().cloneCache();
+			private Collection<Project> getTargetProjects() {
 				List<Project> projects = new ArrayList<>(getProjectManager().getPermittedProjects(new CreateChildren()));
-				projects.sort(cache.comparingPath());
+				
+				Collections.sort(projects, new Comparator<Project>() {
+
+					@Override
+					public int compare(Project o1, Project o2) {
+						return o1.getPath().compareTo(o2.getPath());
+					}
+					
+				});
 				return projects;
 			}
 
@@ -873,7 +894,7 @@ public class ProjectListPanel extends Panel {
 	
 				@Override
 				protected List<MenuItem> getMenuItems(FloatingPanel dropdown) {
-					Collection<ProjectImporter> importers = new ArrayList<>();
+					Collection<ProjectImporter<? extends Serializable, ? extends Serializable, ? extends Serializable>> importers = new ArrayList<>();
 					List<ProjectImporterContribution> contributions = 
 							new ArrayList<>(OneDev.getExtensions(ProjectImporterContribution.class));
 					Collections.sort(contributions, new Comparator<ProjectImporterContribution>() {
@@ -889,7 +910,7 @@ public class ProjectListPanel extends Panel {
 						importers.addAll(contribution.getImporters());
 					
 					List<MenuItem> menuItems = new ArrayList<>();
-					for (ProjectImporter importer: importers) {
+					for (ProjectImporter<? extends Serializable, ? extends Serializable, ? extends Serializable> importer: importers) {
 						menuItems.add(new MenuItem() {
 	
 							@Override
@@ -1050,64 +1071,280 @@ public class ProjectListPanel extends Panel {
 				
 				fragment.add(new Label("lastUpdate", "Updated " + DateUtils.formatAge(project.getUpdateDate())));
 				
-				if (project.isCodeManagement() && SecurityUtils.canReadCode(project)) {
-					fragment.add(new CodeStatsPanel("codeStats", rowModel));
-
-					fragment.add(new PullRequestStatsPanel("pullRequestStats", rowModel, new LoadableDetachableModel<Map<PullRequest.Status, Long>>() {
+				int commitCount;
+				if (project.isCodeManagement() && SecurityUtils.canReadCode(project)
+						&& (commitCount=OneDev.getInstance(CommitInfoManager.class).getCommitCount(project)) != 0) {
+					Fragment commitInfoFrag = new Fragment("codeInfo", "codeInfoFrag", ProjectListPanel.this);
+					PageParameters params = ProjectCommitsPage.paramsOf(project, null);
+					Link<Void> commitsLink = new BookmarkablePageLink<Void>("commits", ProjectCommitsPage.class, params);
+					commitsLink.add(new Label("label", commitCount + " commits"));
+					commitInfoFrag.add(commitsLink);
+					
+					params = ProjectBranchesPage.paramsOf(project);
+					Link<Void> branchesLink = new BookmarkablePageLink<Void>("branches", ProjectBranchesPage.class, params);
+					try {
+						int branchCount = project.getRepository().getRefDatabase().getRefsByPrefix(Constants.R_HEADS).size();
+						branchesLink.add(new Label("label", branchCount + " branches"));
+					} catch (IOException e) {
+						throw new RuntimeException(e);
+					}
+					commitInfoFrag.add(branchesLink);
+					
+					params = ProjectTagsPage.paramsOf(project);
+					Link<Void> tagsLink = new BookmarkablePageLink<Void>("tags", ProjectTagsPage.class, params);
+					try {
+						int tagCount = project.getRepository().getRefDatabase().getRefsByPrefix(Constants.R_TAGS).size();
+						tagsLink.add(new Label("label", tagCount + " tags"));
+					} catch (IOException e) {
+						throw new RuntimeException(e);
+					}
+					commitInfoFrag.add(tagsLink);
+					
+					fragment.add(commitInfoFrag);
+					
+					IModel<Integer> totalCountModel = new LoadableDetachableModel<Integer>() {
 
 						@Override
-						protected Map<PullRequest.Status, Long> load() {
-							Map<PullRequest.Status, Long> statusCounts = new LinkedHashMap<>();
+						protected Integer load() {
+							int totalCount = 0;
 							for (ProjectPullRequestStats stats: pullRequestStatsModel.getObject()) {
 								if (stats.getProjectId().equals(projectId)) 
-									statusCounts.put(stats.getPullRequestStatus(), stats.getStatusCount());
+									totalCount += stats.getStatusCount();
 							}
-							return statusCounts;
+							return totalCount;
+						}
+						
+					};
+					Fragment pullRequestInfoFrag = new Fragment("pullRequestInfo", "pullRequestInfoFrag", ProjectListPanel.this) {
+
+						@Override
+						protected void onConfigure() {
+							super.onConfigure();
+							setVisible(totalCountModel.getObject() != 0);
+						}
+						
+					};
+					pullRequestInfoFrag.setDefaultModel(totalCountModel);
+
+					params = ProjectPullRequestsPage.paramsOf(project);
+					Link<Void> pullRequestsLink = new BookmarkablePageLink<Void>("pullRequests", ProjectPullRequestsPage.class, params);
+					pullRequestsLink.add(new Label("label", new AbstractReadOnlyModel<String>() {
+
+						@Override
+						public String getObject() {
+							return totalCountModel.getObject() + " pull requests";
 						}
 						
 					}));
+					pullRequestInfoFrag.add(pullRequestsLink);
+					
+					pullRequestInfoFrag.add(new ListView<ProjectPullRequestStats>("statuses", 
+							new LoadableDetachableModel<List<ProjectPullRequestStats>>() {
+
+						@Override
+						protected List<ProjectPullRequestStats> load() {
+							List<ProjectPullRequestStats> listOfPullRequestStats = new ArrayList<>();
+							for (ProjectPullRequestStats stats: pullRequestStatsModel.getObject()) {
+								if (stats.getProjectId().equals(projectId)) 
+									listOfPullRequestStats.add(stats);
+							}
+							return listOfPullRequestStats;
+						}
+						
+					}) {
+
+						@Override
+						protected void populateItem(ListItem<ProjectPullRequestStats> item) {
+							ProjectPullRequestStats stats = item.getModelObject();
+							PullRequestQuery query = new PullRequestQuery(
+									new io.onedev.server.search.entity.pullrequest.StatusCriteria(stats.getPullRequestStatus()));
+							PageParameters params = ProjectPullRequestsPage.paramsOf(rowModel.getObject(), query.toString(), 0);
+							Link<Void> statusLink = new BookmarkablePageLink<Void>("link", ProjectPullRequestsPage.class, params);
+							String statusName = stats.getPullRequestStatus().toString();
+							statusLink.add(new Label("label", stats.getStatusCount() + " " + statusName));
+							
+							String cssClass;
+							switch (stats.getPullRequestStatus()) {
+							case OPEN:
+								cssClass = "link-warning";
+								break;
+							case MERGED:
+								cssClass = "link-success";
+								break;
+							default:
+								cssClass = "link-danger";
+								break;
+							}
+							statusLink.add(AttributeAppender.append("class", cssClass));
+							item.add(statusLink);
+						}
+						
+					});
+					
+					fragment.add(pullRequestInfoFrag);
 				} else {
-					fragment.add(new WebMarkupContainer("codeStats").setVisible(false));
-					fragment.add(new WebMarkupContainer("pullRequestStats").setVisible(false));
+					fragment.add(new WebMarkupContainer("codeInfo").setVisible(false));
+					fragment.add(new WebMarkupContainer("pullRequestInfo").setVisible(false));
 				}
 				
 				if (project.isIssueManagement()) {
-					fragment.add(new IssueStatsPanel("issueStats", rowModel, new LoadableDetachableModel<Map<Integer, Long>>() {
+					IModel<Integer> totalCountModel = new LoadableDetachableModel<Integer>() {
 
 						@Override
-						protected Map<Integer, Long> load() {
-							Map<Integer, Long> stateCounts = new LinkedHashMap<>();
-							GlobalIssueSetting issueSetting = OneDev.getInstance(SettingManager.class).getIssueSetting();
+						protected Integer load() {
+							int totalCount = 0;
+							for (ProjectIssueStats stats: issueStatsModel.getObject()) {
+								if (stats.getProjectId().equals(projectId)) 
+									totalCount += stats.getStateCount();
+							}
+							return totalCount;
+						}
+						
+					};
+					Fragment issueInfoFrag = new Fragment("issueInfo", "issueInfoFrag", ProjectListPanel.this) {
+
+						@Override
+						protected void onConfigure() {
+							super.onConfigure();
+							setVisible(totalCountModel.getObject() != 0);
+						}
+						
+					};
+					issueInfoFrag.setDefaultModel(totalCountModel);
+
+					PageParameters params = ProjectIssueListPage.paramsOf(project, null, 0);
+					Link<Void> issuesLink = new BookmarkablePageLink<Void>("issues", ProjectIssueListPage.class, params);
+					issuesLink.add(new Label("label", new AbstractReadOnlyModel<String>() {
+
+						@Override
+						public String getObject() {
+							return totalCountModel.getObject() + " issues";
+						}
+						
+					}));
+					issueInfoFrag.add(issuesLink);
+					
+					GlobalIssueSetting issueSetting = OneDev.getInstance(SettingManager.class).getIssueSetting();
+					
+					issueInfoFrag.add(new ListView<ProjectIssueStats>("states", new LoadableDetachableModel<List<ProjectIssueStats>>() {
+
+						@Override
+						protected List<ProjectIssueStats> load() {
+							List<ProjectIssueStats> listOfIssueStats = new ArrayList<>();
 							for (ProjectIssueStats stats: issueStatsModel.getObject()) {
 								if (stats.getProjectId().equals(projectId) 
 										&& stats.getStateOrdinal() < issueSetting.getStateSpecs().size()) {
-									stateCounts.put(stats.getStateOrdinal(), stats.getStateCount());
+									listOfIssueStats.add(stats);
 								}
 							}
-							return stateCounts;
+							return listOfIssueStats;
 						}
 						
-					}));
+					}) {
+
+						@Override
+						protected void populateItem(ListItem<ProjectIssueStats> item) {
+							Project project = rowModel.getObject();
+							ProjectIssueStats stats = item.getModelObject();
+							StateSpec stateSpec = issueSetting.getStateSpecs().get(stats.getStateOrdinal());
+							IssueQuery query = new IssueQuery(new StateCriteria(stateSpec.getName(), IssueQueryLexer.Is));
+							PageParameters params = ProjectIssueListPage.paramsOf(project, query.toString(), 0);
+							Link<Void> stateLink = new BookmarkablePageLink<Void>("link", ProjectIssueListPage.class, params);
+							stateLink.add(new Label("label", stats.getStateCount() + " " + stateSpec.getName()));
+							stateLink.add(AttributeAppender.append("style", "color:" + stateSpec.getColor()));
+							item.add(stateLink);
+						}
+						
+					});
+					
+					fragment.add(issueInfoFrag);
 				} else {
-					fragment.add(new WebMarkupContainer("issueStats").setVisible(false));
+					fragment.add(new WebMarkupContainer("issueInfo").setVisible(false));
 				}
 				
 				if (project.isCodeManagement()) {
-					fragment.add(new BuildStatsPanel("buildStats", rowModel, new LoadableDetachableModel<Map<Build.Status, Long>>() {
+					IModel<Integer> totalCountModel = new LoadableDetachableModel<Integer>() {
 
 						@Override
-						protected Map<Build.Status, Long> load() {
-							Map<Build.Status, Long> statusCounts = new LinkedHashMap<>();
+						protected Integer load() {
+							int totalCount = 0;
 							for (ProjectBuildStats stats: buildStatsModel.getObject()) {
 								if (stats.getProjectId().equals(projectId)) 
-									statusCounts.put(stats.getBuildStatus(), stats.getStatusCount());
+									totalCount += stats.getStatusCount();
 							}
-							return statusCounts;
+							return totalCount;
+						}
+						
+					};
+					Fragment buildInfoFrag = new Fragment("buildInfo", "buildInfoFrag", ProjectListPanel.this) {
+
+						@Override
+						protected void onConfigure() {
+							super.onConfigure();
+							setVisible(totalCountModel.getObject() != 0);
+						}
+						
+					};
+					buildInfoFrag.setDefaultModel(totalCountModel);
+
+					PageParameters params = ProjectBuildsPage.paramsOf(project);
+					Link<Void> buildsLink = new BookmarkablePageLink<Void>("builds", ProjectBuildsPage.class, params);
+					buildsLink.add(new Label("label", new AbstractReadOnlyModel<String>() {
+
+						@Override
+						public String getObject() {
+							return totalCountModel.getObject() + " builds";
 						}
 						
 					}));
+					buildInfoFrag.add(buildsLink);
+					
+					buildInfoFrag.add(new ListView<ProjectBuildStats>("statuses", 
+							new LoadableDetachableModel<List<ProjectBuildStats>>() {
+
+						@Override
+						protected List<ProjectBuildStats> load() {
+							List<ProjectBuildStats> listOfBuildStats = new ArrayList<>();
+							for (ProjectBuildStats stats: buildStatsModel.getObject()) {
+								if (stats.getProjectId().equals(projectId)) 
+									listOfBuildStats.add(stats);
+							}
+							return listOfBuildStats;
+						}
+						
+					}) {
+
+						@Override
+						protected void populateItem(ListItem<ProjectBuildStats> item) {
+							ProjectBuildStats stats = item.getModelObject();
+							BuildQuery query = new BuildQuery(new StatusCriteria(stats.getBuildStatus()));
+							PageParameters params = ProjectBuildsPage.paramsOf(rowModel.getObject(), query.toString(), 0);
+							Link<Void> statusLink = new BookmarkablePageLink<Void>("link", ProjectBuildsPage.class, params);
+							String statusName = stats.getBuildStatus().toString();
+							statusLink.add(new Label("label", stats.getStatusCount() + " " + statusName));
+							
+							String cssClass;
+							switch (stats.getBuildStatus()) {
+							case SUCCESSFUL:
+								cssClass = "link-success";
+								break;
+							case FAILED:
+							case TIMED_OUT:
+							case CANCELLED:
+								cssClass = "link-danger";
+								break;
+							default:
+								cssClass = "link-warning";
+							}
+							statusLink.add(AttributeAppender.append("class", cssClass));
+							item.add(statusLink);
+						}
+						
+					});
+					
+					fragment.add(buildInfoFrag);
 				} else {
-					fragment.add(new WebMarkupContainer("buildStats").setVisible(false));
+					fragment.add(new WebMarkupContainer("buildInfo").setVisible(false));
 				}
 				
 				List<ProjectFacade> children = getProjectManager().getChildren(projectId);
@@ -1196,15 +1433,11 @@ public class ProjectListPanel extends Panel {
 	protected Project getParentProject() {
 		return null;
 	}
-	
-	protected ProjectQuery getBaseQuery() {
-		return new ProjectQuery();
-	}
 
 	@Override
 	public void renderHead(IHeaderResponse response) {
 		super.renderHead(response);
-		response.render(CssHeaderItem.forReference(new ProjectListCssResourceReference()));
+		response.render(CssHeaderItem.forReference(new ProjectCssResourceReference()));
 	}
 		
 }

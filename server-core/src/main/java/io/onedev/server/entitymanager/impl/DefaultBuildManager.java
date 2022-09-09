@@ -63,7 +63,6 @@ import io.onedev.server.model.BuildDependence;
 import io.onedev.server.model.BuildParam;
 import io.onedev.server.model.Group;
 import io.onedev.server.model.GroupAuthorization;
-import io.onedev.server.model.Issue;
 import io.onedev.server.model.Project;
 import io.onedev.server.model.PullRequest;
 import io.onedev.server.model.Role;
@@ -1016,14 +1015,6 @@ public class DefaultBuildManager extends BaseEntityManager<Build> implements Bui
 			
 			return getSession().createQuery(criteriaQuery).getResultList();
 		}
-	}
-
-	@Override
-	public Build findByUUID(String uuid) {
-		EntityCriteria<Build> criteria = newCriteria();
-		criteria.add(Restrictions.eq(Issue.PROP_UUID, uuid));
-		criteria.setCacheable(true);
-		return find(criteria);
 	}
 	
 }

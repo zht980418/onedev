@@ -70,14 +70,14 @@ public class DefaultMarkdownManager implements MarkdownManager {
 				.set(TablesExtension.APPEND_MISSING_COLUMNS, true)
 				.set(TablesExtension.DISCARD_EXTRA_COLUMNS, true)
 				.set(TablesExtension.HEADER_SEPARATOR_COLUMN_MATCH, true)
-				.set(TablesExtension.CLASS_NAME, "table")
 				.set(Parser.EXTENSIONS, extensions);
 	}
 	
 	@Override
 	public String render(String markdown) {
+		MutableDataHolder options = setupOptions();
 		Node node = parse(markdown);
-		return HtmlRenderer.builder(setupOptions()).softBreak("<br>").build().render(node);
+		return HtmlRenderer.builder(options).softBreak("<br>").build().render(node);
 	}
 
 	@Override

@@ -29,8 +29,8 @@ import io.onedev.server.model.PullRequest;
 import io.onedev.server.model.User;
 import io.onedev.server.security.SecurityUtils;
 import io.onedev.server.util.ContentDetector;
-import io.onedev.server.util.Similarities;
-import io.onedev.server.util.facade.UserCache;
+import io.onedev.server.util.match.MatchScoreProvider;
+import io.onedev.server.util.match.MatchScoreUtils;
 import io.onedev.server.web.component.markdown.AtWhoReferenceSupport;
 import io.onedev.server.web.component.markdown.MarkdownEditor;
 import io.onedev.server.web.component.markdown.UserMentionSupport;
@@ -76,23 +76,22 @@ class MarkdownBlobEditor extends FormComponentPanel<byte[]> {
 
 					@Override
 					public List<User> findUsers(String query, int count) {
-						UserCache cache = OneDev.getInstance(UserManager.class).cloneCache();
-						List<User> users = new ArrayList<>(cache.getUsers());
-						users.sort(cache.comparingDisplayName(Sets.newHashSet()));
-						
-						users = new Similarities<User>(users) {
+						List<User> mentionables = OneDev.getInstance(UserManager.class).queryAndSort(Sets.newHashSet());
+						List<User> filtered = MatchScoreUtils.filterAndSort(mentionables, new MatchScoreProvider<User>() {
 
 							@Override
-							public double getSimilarScore(User object) {
-								return cache.getSimilarScore(object, query);
+							public double getMatchScore(User object) {
+								return object.getMatchScore(query) 
+										* (mentionables.size() - mentionables.indexOf(object)) 
+										/ mentionables.size();
 							}
 							
-						};
+						});
 						
-						if (users.size() > count)
-							return users.subList(0, count);
+						if (filtered.size() > count)
+							return filtered.subList(0, count);
 						else
-							return users;
+							return filtered;
 					}
 					
 				};

@@ -43,7 +43,6 @@ import io.onedev.server.model.IssueComment;
 import io.onedev.server.model.Project;
 import io.onedev.server.model.User;
 import io.onedev.server.security.SecurityUtils;
-import io.onedev.server.util.facade.UserCache;
 import io.onedev.server.web.ajaxlistener.ConfirmLeaveListener;
 import io.onedev.server.web.behavior.WebSocketObserver;
 import io.onedev.server.web.component.issue.activities.activity.IssueActivity;
@@ -233,10 +232,7 @@ public abstract class IssueActivitiesPanel extends Panel {
 				
 				@Override
 				protected List<User> getMentionables() {
-					UserCache cache = OneDev.getInstance(UserManager.class).cloneCache();		
-					List<User> users = new ArrayList<>(cache.getUsers());
-					users.sort(cache.comparingDisplayName(getIssue().getParticipants()));
-					return users;
+					return OneDev.getInstance(UserManager.class).queryAndSort(getIssue().getParticipants());
 				}
 				
 				@Override
@@ -255,22 +251,17 @@ public abstract class IssueActivitiesPanel extends Panel {
 				@Override
 				protected void onSubmit(AjaxRequestTarget target, Form<?> form) {
 					super.onSubmit(target, form);
-					String content = input.getModelObject();
-					if (content.length() > IssueComment.MAX_CONTENT_LEN) {
-						error("Comment too long");
-						target.add(form);
-					} else {
-						IssueComment comment = new IssueComment();
-						comment.setContent(content);
-						comment.setUser(SecurityUtils.getUser());
-						comment.setDate(new Date());
-						comment.setIssue(getIssue());
-						OneDev.getInstance(IssueCommentManager.class).save(comment);
-						
-						input.clearMarkdown();
-						
-						target.add(fragment);
-					}
+
+					IssueComment comment = new IssueComment();
+					comment.setContent(input.getModelObject());
+					comment.setUser(SecurityUtils.getUser());
+					comment.setDate(new Date());
+					comment.setIssue(getIssue());
+					OneDev.getInstance(IssueCommentManager.class).save(comment);
+					
+					input.clearMarkdown();
+					
+					target.add(fragment);
 				}
 
 				@Override

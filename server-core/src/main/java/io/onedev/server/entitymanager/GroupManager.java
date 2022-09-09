@@ -28,6 +28,4 @@ public interface GroupManager extends EntityManager<Group> {
 	
 	List<Group> query(@Nullable String term, int firstResult, int maxResults);
 	
-	List<Group> queryAdminstrator();
-	
 }

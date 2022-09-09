@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
 import javax.persistence.EntityNotFoundException;
 
@@ -36,6 +37,7 @@ import io.onedev.server.OneDev;
 import io.onedev.server.buildspec.job.Job;
 import io.onedev.server.buildspec.job.JobDependency;
 import io.onedev.server.buildspec.job.JobManager;
+import io.onedev.server.buildspec.param.ParamUtils;
 import io.onedev.server.buildspec.param.spec.ParamSpec;
 import io.onedev.server.entitymanager.BuildManager;
 import io.onedev.server.model.Build;
@@ -56,6 +58,7 @@ import io.onedev.server.util.script.identity.ScriptIdentityAware;
 import io.onedev.server.web.WebSession;
 import io.onedev.server.web.ajaxlistener.ConfirmClickListener;
 import io.onedev.server.web.behavior.WebSocketObserver;
+import io.onedev.server.web.component.beaneditmodal.BeanEditModalPanel;
 import io.onedev.server.web.component.build.side.BuildSidePanel;
 import io.onedev.server.web.component.build.status.BuildStatusIcon;
 import io.onedev.server.web.component.entity.nav.EntityNavPanel;
@@ -72,6 +75,9 @@ import io.onedev.server.web.component.sideinfo.SideInfoPanel;
 import io.onedev.server.web.component.tabbable.PageTabHead;
 import io.onedev.server.web.component.tabbable.Tab;
 import io.onedev.server.web.component.tabbable.Tabbable;
+import io.onedev.server.web.editable.BeanDescriptor;
+import io.onedev.server.web.editable.PropertyDescriptor;
+import io.onedev.server.web.editable.annotation.Password;
 import io.onedev.server.web.page.project.ProjectPage;
 import io.onedev.server.web.page.project.builds.ProjectBuildsPage;
 import io.onedev.server.web.page.project.builds.detail.artifacts.BuildArtifactsPage;
@@ -247,13 +253,41 @@ public abstract class BuildDetailPage extends ProjectPage
 			}
 
 			private void resubmit(Serializable paramBean) {
-				OneDev.getInstance(JobManager.class).resubmit(getBuild(), "Resubmitted manually");
+				Map<String, List<String>> paramMap = ParamUtils.getParamMap(getBuild().getJob(), paramBean, 
+						getBuild().getJob().getParamSpecMap().keySet());
+				OneDev.getInstance(JobManager.class).resubmit(getBuild(), paramMap, "Resubmitted manually");
 				setResponsePage(BuildDashboardPage.class, BuildDashboardPage.paramsOf(getBuild()));
 			}
 			
 			@Override
 			public void onClick(AjaxRequestTarget target) {
-				resubmit(getBuild().getParamBean());
+				Build build = getBuild();
+
+				Serializable paramBean = build.getParamBean();
+
+				Collection<String> secretParamNames = new ArrayList<>();
+				BeanDescriptor descriptor = new BeanDescriptor(paramBean.getClass());
+				for (List<PropertyDescriptor> groupProperties: descriptor.getProperties().values()) {
+					for (PropertyDescriptor property: groupProperties) {
+						if (property.getPropertyGetter().getAnnotation(Password.class) != null 
+								&& build.isParamVisible(property.getDisplayName())) {
+							secretParamNames.add(property.getPropertyName());
+						}
+					}
+				}
+				
+				if (!secretParamNames.isEmpty()) {
+					new BeanEditModalPanel(target, paramBean, secretParamNames, false, "Rebuild #" + build.getNumber()) {
+						
+						@Override
+						protected void onSave(AjaxRequestTarget target, Serializable bean) {
+							resubmit(paramBean);
+						}
+						
+					};
+				} else {
+					resubmit(paramBean);
+				}
 				target.focusComponent(null);
 			}
 
@@ -608,7 +642,7 @@ public abstract class BuildDetailPage extends ProjectPage
 	protected Component newProjectTitle(String componentId) {
 		Fragment fragment = new Fragment(componentId, "projectTitleFrag", this);
 		fragment.add(new BookmarkablePageLink<Void>("builds", ProjectBuildsPage.class, 
-				ProjectBuildsPage.paramsOf(getProject(), 0)));
+				ProjectBuildsPage.paramsOf(getProject())));
 		fragment.add(new Label("buildNumber", "#" + getBuild().getNumber()));
 		return fragment;
 	}

@@ -319,7 +319,7 @@ public class KubernetesExecutor extends JobExecutor implements Testable<TestData
 		AtomicBoolean namespaceExists = new AtomicBoolean(false);
 		Commandline kubectl = newKubeCtl();
 		kubectl.addArgs("get", "namespaces", "--field-selector", "metadata.name=" + namespace, 
-				"-o", "name", "--chunk-size=0");
+				"-o", "name");
 		kubectl.execute(new LineConsumer() {
 
 			@Override
@@ -393,8 +393,7 @@ public class KubernetesExecutor extends JobExecutor implements Testable<TestData
 		if (!osInfos.isEmpty()) {
 			return OsInfo.getBaseline(osInfos);
 		} else {
-			jobLogger.warning("No matching nodes found, assuming baseline os as amd64 linux");
-			return new OsInfo("Linux", "", "amd64");
+			throw new ExplicitException("No applicable working nodes found");
 		}
 	}
 	

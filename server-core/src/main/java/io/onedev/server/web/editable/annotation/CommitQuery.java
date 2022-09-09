@@ -14,8 +14,6 @@ import io.onedev.server.util.validation.CommitQueryValidator;
 @Retention(RetentionPolicy.RUNTIME)
 @Constraint(validatedBy=CommitQueryValidator.class) 
 public @interface CommitQuery {
-	boolean withCurrentUserCriteria() default false;
-	
     String message() default "";
 
     Class<?>[] groups() default {};

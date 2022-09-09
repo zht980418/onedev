@@ -3,7 +3,6 @@ package io.onedev.server.event.pullrequest;
 import java.util.Date;
 
 import io.onedev.server.model.Build;
-import io.onedev.server.persistence.dao.Dao;
 
 public class PullRequestBuildEvent extends PullRequestEvent {
 
@@ -27,11 +26,6 @@ public class PullRequestBuildEvent extends PullRequestEvent {
 			activity = "build #" + build.getNumber();
 		activity += " is " + build.getStatus();
 		return activity;
-	}
-
-	@Override
-	public PullRequestEvent cloneIn(Dao dao) {
-		return new PullRequestBuildEvent(dao.load(Build.class, build.getId()));
 	}
 
 }

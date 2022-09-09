@@ -22,8 +22,7 @@ public class CommitQueryEditSupport implements EditSupport {
 	@Override
 	public PropertyContext<?> getEditContext(PropertyDescriptor descriptor) {
 		Method propertyGetter = descriptor.getPropertyGetter();
-		CommitQuery commitQuery = propertyGetter.getAnnotation(CommitQuery.class);
-        if (commitQuery != null) {
+        if (propertyGetter.getAnnotation(CommitQuery.class) != null) {
         	if (propertyGetter.getReturnType() != String.class) {
 	    		throw new RuntimeException("Annotation 'CommitQuery' should be applied to property "
 	    				+ "with type 'String'");
@@ -63,7 +62,7 @@ public class CommitQueryEditSupport implements EditSupport {
 	        				return ((ProjectPage) WicketUtils.getPage()).getProject();
 	        			}
 	            		
-	            	}, commitQuery.withCurrentUserCriteria());
+	            	});
 		        	return new StringPropertyEditor(componentId, descriptor, model).setInputAssist(inputAssist);
 				}
     			

@@ -3,7 +3,6 @@ package io.onedev.server.web.behavior;
 import static io.onedev.server.search.entity.project.ProjectQuery.getRuleName;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -28,7 +27,6 @@ import io.onedev.server.search.entity.project.ProjectQueryLexer;
 import io.onedev.server.search.entity.project.ProjectQueryParser;
 import io.onedev.server.security.permission.AccessProject;
 import io.onedev.server.util.DateUtils;
-import io.onedev.server.util.facade.ProjectCache;
 import io.onedev.server.web.behavior.inputassist.ANTLRAssistBehavior;
 import io.onedev.server.web.util.SuggestionUtils;
 
@@ -98,11 +96,10 @@ public class ProjectQueryBehavior extends ANTLRAssistBehavior {
 									} else if (fieldName.equals(Project.NAME_SERVICE_DESK_NAME)) {
 										if (!matchWith.contains("*")) {
 											ProjectManager projectManager = OneDev.getInstance(ProjectManager.class);
-											ProjectCache cache = projectManager.cloneCache();
-											Collection<Project> projects = projectManager.getPermittedProjects(new AccessProject());
-											List<String> serviceDeskNames = projects.stream()
-													.map(it->cache.get(it.getId()).getServiceDeskName())
-													.filter(it-> it != null)
+											List<String> serviceDeskNames = projectManager.getPermittedProjects(new AccessProject())
+													.stream()
+													.filter(it->it.getServiceDeskName() != null)
+													.map(it->it.getServiceDeskName())
 													.sorted()
 													.collect(Collectors.toList());
 											return SuggestionUtils.suggest(serviceDeskNames, matchWith);

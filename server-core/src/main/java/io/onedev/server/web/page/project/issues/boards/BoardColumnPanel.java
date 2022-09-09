@@ -59,7 +59,6 @@ import io.onedev.server.search.entity.issue.FieldOperatorCriteria;
 import io.onedev.server.search.entity.issue.IssueQuery;
 import io.onedev.server.search.entity.issue.IssueQueryLexer;
 import io.onedev.server.search.entity.issue.MilestoneCriteria;
-import io.onedev.server.search.entity.issue.MilestoneIsEmptyCriteria;
 import io.onedev.server.search.entity.issue.StateCriteria;
 import io.onedev.server.security.SecurityUtils;
 import io.onedev.server.util.ComponentContext;
@@ -90,8 +89,6 @@ abstract class BoardColumnPanel extends Panel implements EditContext {
 					criterias.add(boardQuery.getCriteria());
 				if (getMilestone() != null)
 					criterias.add(new MilestoneCriteria(getMilestone().getName()));
-				else
-					criterias.add(new MilestoneIsEmptyCriteria());
 				String identifyField = getBoard().getIdentifyField();
 				if (identifyField.equals(Issue.NAME_STATE)) {
 					criterias.add(new StateCriteria(getColumn(), IssueQueryLexer.Is));
@@ -286,6 +283,11 @@ abstract class BoardColumnPanel extends Panel implements EditContext {
 		head.add(new ModalLink("addCard") {
 
 			@Override
+			protected String getModalCssClass() {
+				return "modal-lg";
+			}
+			
+			@Override
 			protected Component newContent(String id, ModalPanel modal) {
 				return new NewCardPanel(id) {
 
@@ -433,8 +435,7 @@ abstract class BoardColumnPanel extends Panel implements EditContext {
 					if (hasVisibleEditableDependents) {
 						Collection<String> propertyNames = FieldUtils.getEditablePropertyNames(
 								issue.getProject(), fieldBean.getClass(), dependentFields);
-						class DependentFieldsEditor extends BeanEditModalPanel<Serializable> 
-								implements ProjectAware, InputContext {
+						class DependentFieldsEditor extends BeanEditModalPanel implements ProjectAware, InputContext {
 
 							public DependentFieldsEditor(IPartialPageRequestHandler handler, Serializable bean,
 									Collection<String> propertyNames, boolean exclude, String title) {

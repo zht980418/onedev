@@ -2,7 +2,6 @@ package io.onedev.server.buildspec;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Stack;
 import java.util.stream.Collectors;
@@ -34,7 +33,6 @@ import io.onedev.server.security.permission.ProjectPermission;
 import io.onedev.server.security.permission.ReadCode;
 import io.onedev.server.util.EditContext;
 import io.onedev.server.util.JobSecretAuthorizationContext;
-import io.onedev.server.util.facade.ProjectCache;
 import io.onedev.server.util.validation.Validatable;
 import io.onedev.server.util.validation.annotation.ClassValidating;
 import io.onedev.server.web.editable.annotation.ChoiceProvider;
@@ -84,15 +82,13 @@ public class Import implements Serializable, Validatable {
 
 	@SuppressWarnings("unused")
 	private static List<String> getProjectChoices() {
-		ProjectManager projectManager = OneDev.getInstance(ProjectManager.class);
+		List<String> choices = new ArrayList<>();
 		Project project = ((ProjectPage)WicketUtils.getPage()).getProject();
+		for (Project each: OneDev.getInstance(ProjectManager.class).getPermittedProjects(new AccessProject())) {
+			if (!each.equals(project))
+				choices.add(each.getPath());
+		}
 		
-		Collection<Project> projects = projectManager.getPermittedProjects(new AccessProject());
-		projects.remove(project);
-		
-		ProjectCache cache = projectManager.cloneCache();
-
-		List<String> choices = projects.stream().map(it->cache.getPath(it.getId())).collect(Collectors.toList());
 		Collections.sort(choices);
 		
 		return choices;

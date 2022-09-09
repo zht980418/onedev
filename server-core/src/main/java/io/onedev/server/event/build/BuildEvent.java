@@ -4,15 +4,13 @@ import java.util.Date;
 
 import org.eclipse.jgit.lib.ObjectId;
 
-import io.onedev.server.OneDev;
-import io.onedev.server.entitymanager.UrlManager;
 import io.onedev.server.event.ProjectEvent;
 import io.onedev.server.model.Build;
 import io.onedev.server.model.User;
 import io.onedev.server.util.CommitAware;
 import io.onedev.server.util.ProjectScopedCommit;
 
-public abstract class BuildEvent extends ProjectEvent implements CommitAware {
+public class BuildEvent extends ProjectEvent implements CommitAware {
 
 	private Build build;
 	
@@ -39,9 +37,4 @@ public abstract class BuildEvent extends ProjectEvent implements CommitAware {
 		return build.getStatus().toString();
 	}
 
-	@Override
-	public String getUrl() {
-		return OneDev.getInstance(UrlManager.class).urlFor(build);
-	}
-	
 }

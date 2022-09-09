@@ -1,5 +1,6 @@
 package io.onedev.server.web.component.diff.revision;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -85,6 +86,7 @@ import io.onedev.server.model.User;
 import io.onedev.server.model.support.CompareContext;
 import io.onedev.server.model.support.Mark;
 import io.onedev.server.persistence.SessionManager;
+import io.onedev.server.persistence.TransactionManager;
 import io.onedev.server.search.code.CodeIndexManager;
 import io.onedev.server.search.code.CommitIndexed;
 import io.onedev.server.security.SecurityUtils;
@@ -487,11 +489,11 @@ public abstract class RevisionDiffPanel extends Panel {
 
 									@Override
 									public void onClick(AjaxRequestTarget target) {
-										new BeanEditModalPanel<SuggestionBatchApplyBean>(target, new SuggestionBatchApplyBean()) {
+										new BeanEditModalPanel(target, new SuggestionBatchApplyBean()) {
 											
 											@Override
-											protected void onSave(AjaxRequestTarget target, SuggestionBatchApplyBean bean) {
-												String commitMessage = bean.getCommitMessage(); 
+											protected void onSave(AjaxRequestTarget target, Serializable bean) {
+												String commitMessage = ((SuggestionBatchApplyBean) bean).getCommitMessage(); 
 												PullRequest request = getPullRequest();
 												ObjectId commitId = request.getLatestUpdate().getHeadCommit().copy();
 												try {
@@ -502,14 +504,21 @@ public abstract class RevisionDiffPanel extends Panel {
 													
 													Long projectId = request.getSourceProject().getId();
 													String refName = GitUtils.branch2ref(request.getSourceBranch());
-													OneDev.getInstance(SessionManager.class).runAsyncAfterCommit(new Runnable() {
+													OneDev.getInstance(TransactionManager.class).runAfterCommit(new Runnable() {
 
 														@Override
 														public void run() {
-															Project project = OneDev.getInstance(ProjectManager.class).load(projectId);
-															project.cacheObjectId(request.getSourceBranch(), newCommitId);
-															RefUpdated refUpdated = new RefUpdated(project, refName, commitId, newCommitId);
-															OneDev.getInstance(ListenerRegistry.class).post(refUpdated);
+															OneDev.getInstance(SessionManager.class).runAsync(new Runnable() {
+
+																@Override
+																public void run() {
+																	Project project = OneDev.getInstance(ProjectManager.class).load(projectId);
+																	project.cacheObjectId(request.getSourceBranch(), newCommitId);
+																	RefUpdated refUpdated = new RefUpdated(project, refName, commitId, newCommitId);
+																	OneDev.getInstance(ListenerRegistry.class).post(refUpdated);
+																}
+																
+															});
 														}
 														
 													});
@@ -578,11 +587,12 @@ public abstract class RevisionDiffPanel extends Panel {
 						DiffOption diffOption = new DiffOption();
 						diffOption.setWhitespaceOption(whitespaceOptionModel.getObject());
 						diffOption.setViewMode(diffMode);
-						new BeanEditModalPanel<DiffOption>(target, diffOption) {
+						new BeanEditModalPanel(target, diffOption) {
 							
 							@Override
-							protected void onSave(AjaxRequestTarget target, DiffOption bean) {
-								diffMode = bean.getViewMode();
+							protected void onSave(AjaxRequestTarget target, Serializable bean) {
+								DiffOption diffOption = (DiffOption) bean;
+								diffMode = diffOption.getViewMode();
 								
 								WebResponse response = (WebResponse) RequestCycle.get().getResponse();
 								Cookie cookie = new Cookie(COOKIE_VIEW_MODE, diffMode.name());
@@ -590,7 +600,7 @@ public abstract class RevisionDiffPanel extends Panel {
 								cookie.setPath("/");
 								response.addCookie(cookie);
 								
-								whitespaceOptionModel.setObject(bean.getWhitespaceOption());
+								whitespaceOptionModel.setObject(diffOption.getWhitespaceOption());
 								
 								target.add(navs);
 								target.add(body);
@@ -652,7 +662,7 @@ public abstract class RevisionDiffPanel extends Panel {
 
 			@Override
 			protected List<InputSuggestion> suggest(String matchWith) {
-				return SuggestionUtils.suggestByPattern(listOfInvolvedPaths, matchWith);
+				return SuggestionUtils.suggestPaths(listOfInvolvedPaths, matchWith);
 			}
 
 			@Override
@@ -1073,66 +1083,60 @@ public abstract class RevisionDiffPanel extends Panel {
 									protected void onSubmit(AjaxRequestTarget target, Form<?> form) {
 										super.onSubmit(target, form);
 										
-										String content = contentInput.getModelObject();
-										if (content.length() > CodeComment.MAX_CONTENT_LEN) {
-											error("Comment too long");
-											target.add(feedback);
-										} else {
-											CodeComment comment = new CodeComment();
-											comment.setUUID(uuid);
-											comment.setProject(getProject());
-											comment.setUser(SecurityUtils.getUser());
-											comment.setMark(mark);
-											comment.setCompareContext(getCompareContext());
-											comment.setContent(content);
+										CodeComment comment = new CodeComment();
+										comment.setUUID(uuid);
+										comment.setProject(getProject());
+										comment.setUser(SecurityUtils.getUser());
+										comment.setMark(mark);
+										comment.setCompareContext(getCompareContext());
+										comment.setContent(contentInput.getModelObject());
+										
+										annotationSupport.onSaveComment(comment);
+										
+										CodeCommentPanel commentPanel = new CodeCommentPanel(fragment.getId(), comment.getId()) {
+	
+											@Override
+											protected void onDeleteComment(AjaxRequestTarget target, CodeComment comment) {
+												RevisionDiffPanel.this.onCommentDeleted(target, comment);
+											}
 											
-											annotationSupport.onSaveComment(comment);
-											
-											CodeCommentPanel commentPanel = new CodeCommentPanel(fragment.getId(), comment.getId()) {
-		
-												@Override
-												protected void onDeleteComment(AjaxRequestTarget target, CodeComment comment) {
-													RevisionDiffPanel.this.onCommentDeleted(target, comment);
-												}
-												
-												@Override
-												protected void onSaveComment(AjaxRequestTarget target, CodeComment comment) {
-													annotationSupport.onSaveComment(comment);
-													target.add(commentContainer.get("head"));
-												}
-		
-												@Override
-												protected void onSaveCommentReply(AjaxRequestTarget target, CodeCommentReply reply) {
-													reply.setCompareContext(getCompareContext());
-													annotationSupport.onSaveCommentReply(reply);
-												}
+											@Override
+											protected void onSaveComment(AjaxRequestTarget target, CodeComment comment) {
+												annotationSupport.onSaveComment(comment);
+												target.add(commentContainer.get("head"));
+											}
+	
+											@Override
+											protected void onSaveCommentReply(AjaxRequestTarget target, CodeCommentReply reply) {
+												reply.setCompareContext(getCompareContext());
+												annotationSupport.onSaveCommentReply(reply);
+											}
 
-												@Override
-												protected void onSaveCommentStatusChange(AjaxRequestTarget target, CodeCommentStatusChange change, String note) {
-													change.setCompareContext(getCompareContext());
-													annotationSupport.onSaveCommentStatusChange(change, note);
-												}
-												
-												@Override
-												protected boolean isContextDifferent(CompareContext compareContext) {
-													return RevisionDiffPanel.this.isContextDifferent(compareContext);
-												}
-
-												@Override
-												protected SuggestionSupport getSuggestionSupport() {
-													return RevisionDiffPanel.this.getSuggestionSupport(mark);
-												}
-		
-											};
-											commentContainer.replace(commentPanel);
-											target.add(commentContainer);
+											@Override
+											protected void onSaveCommentStatusChange(AjaxRequestTarget target, CodeCommentStatusChange change, String note) {
+												change.setCompareContext(getCompareContext());
+												annotationSupport.onSaveCommentStatusChange(change, note);
+											}
 											
-											BlobDiffPanel blobDiffPanel = getBlobDiffPanel(comment.getMark().getPath());
-											if (blobDiffPanel != null) 
-												blobDiffPanel.onCommentAdded(target, comment, commentRange);
-		
-											annotationSupport.onCommentOpened(target, comment);
-										}
+											@Override
+											protected boolean isContextDifferent(CompareContext compareContext) {
+												return RevisionDiffPanel.this.isContextDifferent(compareContext);
+											}
+
+											@Override
+											protected SuggestionSupport getSuggestionSupport() {
+												return RevisionDiffPanel.this.getSuggestionSupport(mark);
+											}
+	
+										};
+										commentContainer.replace(commentPanel);
+										target.add(commentContainer);
+										
+										BlobDiffPanel blobDiffPanel = getBlobDiffPanel(comment.getMark().getPath());
+										if (blobDiffPanel != null) 
+											blobDiffPanel.onCommentAdded(target, comment, commentRange);
+	
+										annotationSupport.onCommentOpened(target, comment);
 									}
 	
 								});

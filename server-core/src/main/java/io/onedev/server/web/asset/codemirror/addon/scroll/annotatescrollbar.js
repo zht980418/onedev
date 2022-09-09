@@ -1,5 +1,5 @@
 // CodeMirror, copyright (c) by Marijn Haverbeke and others
-// Distributed under an MIT license: https://codemirror.net/5/LICENSE
+// Distributed under an MIT license: http://codemirror.net/LICENSE
 
 (function(mod) {
   if (typeof exports == "object" && typeof module == "object") // CommonJS
@@ -43,7 +43,7 @@
     cm.on("markerAdded", this.resizeHandler);
     cm.on("markerCleared", this.resizeHandler);
     if (options.listenForChanges !== false)
-      cm.on("changes", this.changeHandler = function() {
+      cm.on("change", this.changeHandler = function() {
         scheduleRedraw(250);
       });
   }
@@ -72,32 +72,22 @@
     var wrapping = cm.getOption("lineWrapping");
     var singleLineH = wrapping && cm.defaultTextHeight() * 1.5;
     var curLine = null, curLineObj = null;
-
     function getY(pos, top) {
       if (curLine != pos.line) {
-        curLine = pos.line
-        curLineObj = cm.getLineHandle(pos.line)
-        var visual = cm.getLineHandleVisualStart(curLineObj)
-        if (visual != curLineObj) {
-          curLine = cm.getLineNumber(visual)
-          curLineObj = visual
-        }
+        curLine = pos.line;
+        curLineObj = cm.getLineHandle(curLine);
       }
-      if ((curLineObj.widgets && curLineObj.widgets.length) ||
-          (wrapping && curLineObj.height > singleLineH))
+      if (wrapping && curLineObj.height > singleLineH)
         return cm.charCoords(pos, "local")[top ? "top" : "bottom"];
       var topY = cm.heightAtLine(curLineObj, "local");
       return topY + (top ? 0 : curLineObj.height);
     }
 
-    var lastLine = cm.lastLine()
     if (cm.display.barWidth) for (var i = 0, nextTop; i < anns.length; i++) {
       var ann = anns[i];
-      if (ann.to.line > lastLine) continue;
       var top = nextTop || getY(ann.from, true) * hScale;
       var bottom = getY(ann.to, false) * hScale;
       while (i < anns.length - 1) {
-        if (anns[i + 1].to.line > lastLine) break;
         nextTop = getY(anns[i + 1].from, true) * hScale;
         if (nextTop > bottom + .9) break;
         ann = anns[++i];
@@ -122,7 +112,7 @@
     this.cm.off("refresh", this.resizeHandler);
     this.cm.off("markerAdded", this.resizeHandler);
     this.cm.off("markerCleared", this.resizeHandler);
-    if (this.changeHandler) this.cm.off("changes", this.changeHandler);
+    if (this.changeHandler) this.cm.off("change", this.changeHandler);
     this.div.parentNode.removeChild(this.div);
   };
 });

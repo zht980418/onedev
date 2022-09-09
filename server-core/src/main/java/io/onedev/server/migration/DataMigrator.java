@@ -33,7 +33,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Preconditions;
-import com.thoughtworks.xstream.core.JVM;
 
 import io.onedev.commons.bootstrap.Bootstrap;
 import io.onedev.commons.utils.ExplicitException;
@@ -2796,16 +2795,11 @@ public class DataMigrator {
 					if (key.equals("SYSTEM")) {
 						Element valueElement = element.element("value");
 						if (valueElement != null) {
-							try {
-								HardwareAbstractionLayer hardware = new SystemInfo().getHardware();
-								int cpu = hardware.getProcessor().getLogicalProcessorCount()*1000;
-								valueElement.addElement("cpu").setText(String.valueOf(cpu));
-								int memory = (int) (hardware.getMemory().getTotal()/1024/1024);
-								valueElement.addElement("memory").setText(String.valueOf(memory));
-							} catch (Exception e) {
-								valueElement.addElement("cpu").setText("4000");
-								valueElement.addElement("memory").setText("8000");
-							}
+							HardwareAbstractionLayer hardware = new SystemInfo().getHardware();
+							int cpu = hardware.getProcessor().getLogicalProcessorCount()*1000;
+							valueElement.addElement("cpu").setText(String.valueOf(cpu));
+							int memory = (int) (hardware.getMemory().getTotal()/1024/1024);
+							valueElement.addElement("memory").setText(String.valueOf(memory));
 						}
 					} else if (key.equals("JOB_EXECUTORS")) {
 						Element valueElement = element.element("value");
@@ -4240,97 +4234,13 @@ public class DataMigrator {
 						Element valueElement = element.element("value");
 						if (valueElement != null) {
 							for (Element issueCreationSettingElement: valueElement.element("issueCreationSettings").elements()) 
-								issueCreationSettingElement.addElement("confidential").setText("false");
+								issueCreationSettingElement.addElement("issueConfidential").setText("false");
 						}						
 					}
 				}
 				dom.writeToFile(file, false);
 			}
 		}
-	}
-	
-	private void migrate93(File dataDir, Stack<Integer> versions) {
-	}
-	
-	private void migrate94(File dataDir, Stack<Integer> versions) {
-		for (File file: dataDir.listFiles()) {
-			if (file.getName().startsWith("Settings.xml")) {
-				VersionedXmlDoc dom = VersionedXmlDoc.fromFile(file);
-				for (Element element: dom.getRootElement().elements()) {
-					String key = element.elementTextTrim("key");
-					if (key.equals("MAIL")) {
-						Element valueElement = element.element("value");
-						if (valueElement != null) {
-							valueElement.addAttribute("class", "io.onedev.server.model.support.administration.mailsetting.OtherMailSetting");
-							Element receiveMailSettingElement = valueElement.element("receiveMailSetting");
-							if (receiveMailSettingElement != null) 
-								receiveMailSettingElement.setName("otherInboxPollSetting");
-						}						
-					}
-				}
-				dom.writeToFile(file, false);
-			}
-		}		
-	}
-	
-	private void migrate95(File dataDir, Stack<Integer> versions) {
-		for (File file: dataDir.listFiles()) {
-			if (file.getName().startsWith("GpgKeys.xml")) {
-				VersionedXmlDoc dom = VersionedXmlDoc.fromFile(file);
-				for (Element element: dom.getRootElement().elements()) {
-					Element contentElement = element.element("content");
-					byte[] bytes = contentElement.getText().getBytes(StandardCharsets.UTF_8);
-					contentElement.setText(JVM.getBase64Codec().encode(bytes));
-				}
-				dom.writeToFile(file, false);
-			}
-		}		
-	}
-	
-	private void migrate96(File dataDir, Stack<Integer> versions) {
-		for (File file: dataDir.listFiles()) {
-			if (file.getName().startsWith("Settings.xml")) {
-				VersionedXmlDoc dom = VersionedXmlDoc.fromFile(file);
-				for (Element element: dom.getRootElement().elements()) {
-					String key = element.elementTextTrim("key");
-					if (key.equals("SERVICE_DESK_SETTING")) {
-						Element valueElement = element.element("value");
-						if (valueElement != null) {
-							Element preserveBeforeElement = valueElement.element("preserveBefore");
-							if (preserveBeforeElement != null)
-								preserveBeforeElement.detach();
-						}						
-					}
-				}
-				dom.writeToFile(file, false);
-			}
-		}		
-	}
-	
-	private void migrate97(File dataDir, Stack<Integer> versions) {
-		Map<String, String> emailOwners = new HashMap<>();
-		for (File file: dataDir.listFiles()) {
-			if (file.getName().startsWith("EmailAddresss.xml")) {
-				VersionedXmlDoc dom = VersionedXmlDoc.fromFile(file);
-				for (Element element: dom.getRootElement().elements()) 
-					emailOwners.put(element.elementTextTrim("id"), element.elementTextTrim("owner"));
-			}
-		}		
-		
-		for (File file: dataDir.listFiles()) {
-			if (file.getName().startsWith("GpgKeys.xml")) {
-				VersionedXmlDoc dom = VersionedXmlDoc.fromFile(file);
-				for (Element element: dom.getRootElement().elements()) { 
-					Element emailAddressElement = element.element("emailAddress");
-					element.addElement("owner").setText(emailOwners.get(emailAddressElement.getTextTrim()));
-					emailAddressElement.detach();
-				}
-				dom.writeToFile(file, false);
-			}
-		}		
-	}
-	
-	private void migrate98(File dataDir, Stack<Integer> versions) {
 	}
 	
 }

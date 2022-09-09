@@ -79,6 +79,11 @@ public abstract class TransitionMenuLink extends MenuLink {
 					return new ModalLink(id) {
 						
 						@Override
+						protected String getModalCssClass() {
+							return "modal-lg";
+						}
+
+						@Override
 						public void onClick(AjaxRequestTarget target) {
 							super.onClick(target);
 							dropdown.close();

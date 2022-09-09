@@ -115,10 +115,6 @@ public abstract class Criteria<T> implements Serializable {
 		this.withParens = withParens;
 		return this;
 	}
-	
-	public boolean withParens() {
-		return withParens;
-	}
 
 	public void onRenameUser(String oldName, String newName) {
 	}
@@ -182,10 +178,6 @@ public abstract class Criteria<T> implements Serializable {
 			return "(" + toStringWithoutParens() + ")";
 		else
 			return toStringWithoutParens();
-	}
-	
-	public String toString(boolean addParensIfNecessary) {
-		return toString();
 	}
 	
 	public void fill(T object) {

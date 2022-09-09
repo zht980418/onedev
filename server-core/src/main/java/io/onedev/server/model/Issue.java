@@ -156,6 +156,8 @@ public class Issue extends AbstractEntity implements Referenceable, AttachmentSt
 	
 	public static final String PROP_UUID = "uuid";
 	
+	public static final String PROP_ID = "id";
+	
 	public static final String PROP_NO_SPACE_TITLE = "noSpaceTitle";
 	
 	public static final String PROP_CONFIDENTIAL = "confidential";
@@ -323,8 +325,6 @@ public class Issue extends AbstractEntity implements Referenceable, AttachmentSt
 	private transient Map<String, Input> fieldInputs;
 	
 	private transient Collection<User> participants;
-	
-	private transient Collection<User> authorizedUsers;
 	
 	public String getState() {
 		return state;
@@ -510,12 +510,6 @@ public class Issue extends AbstractEntity implements Referenceable, AttachmentSt
 
 	public void setAuthorizations(Collection<IssueAuthorization> authorizations) {
 		this.authorizations = authorizations;
-	}
-	
-	public Collection<User> getAuthorizedUsers() {
-		if (authorizedUsers == null)
-			authorizedUsers = getAuthorizations().stream().map(it->it.getUser()).collect(Collectors.toSet());
-		return authorizedUsers;
 	}
 
 	public int getVoteCount() {
@@ -923,10 +917,6 @@ public class Issue extends AbstractEntity implements Referenceable, AttachmentSt
 					.sorted(spec.getParsedIssueQuery(getProject()))
 					.collect(Collectors.toList());
 		}
-	}
-	
-	public static String getSerialLockName(Long issueId) {
-		return "issue-" + issueId + "-serial";
 	}
 	
 	@Nullable

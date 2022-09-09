@@ -242,10 +242,8 @@ public class IssueQuery extends EntityQuery<Issue> implements Comparator<Issue> 
 								return new TitleCriteria(value);
 							} else if (fieldName.equals(Issue.NAME_DESCRIPTION)) {
 								return new DescriptionCriteria(value);
-							} else if (fieldName.equals(Issue.NAME_COMMENT)) {
-								return new CommentCriteria(value);
 							} else {
-								return new StringFieldCriteria(fieldName, value, operator);
+								return new CommentCriteria(value);
 							}
 						case IssueQueryLexer.Is:
 							if (fieldName.equals(Issue.NAME_PROJECT)) {

@@ -2,7 +2,6 @@ package io.onedev.server.web.util;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -43,13 +42,11 @@ import io.onedev.server.model.Issue;
 import io.onedev.server.model.LinkSpec;
 import io.onedev.server.model.Project;
 import io.onedev.server.model.PullRequest;
+import io.onedev.server.model.User;
 import io.onedev.server.model.support.administration.GroovyScript;
 import io.onedev.server.model.support.build.JobSecret;
 import io.onedev.server.security.SecurityUtils;
 import io.onedev.server.security.permission.AccessProject;
-import io.onedev.server.util.facade.ProjectCache;
-import io.onedev.server.util.facade.UserFacade;
-import io.onedev.server.util.facade.UserCache;
 import io.onedev.server.util.interpolative.VariableInterpolator;
 import io.onedev.server.util.match.PatternApplied;
 import io.onedev.server.util.match.WildcardUtils;
@@ -62,31 +59,15 @@ public class SuggestionUtils {
 	public static List<InputSuggestion> suggest(List<String> candidates, String matchWith) {
 		matchWith = matchWith.toLowerCase();
 		List<InputSuggestion> suggestions = new ArrayList<>();
-		
 		for (String candidate: candidates) {
 			LinearRange match = LinearRange.match(candidate, matchWith);
-			if (match != null) 
+			if (match != null) {
 				suggestions.add(new InputSuggestion(candidate, null, match));
+				if (suggestions.size() >= InputAssistBehavior.MAX_SUGGESTIONS)
+					break;
+			}
 		}
-		
-		return sortAndTruncate(suggestions, matchWith);
-	}
-	
-	private static List<InputSuggestion> sortAndTruncate(List<InputSuggestion> suggestions, String matchWith) {
-		if (matchWith.length() != 0) {
-			suggestions.sort(new Comparator<InputSuggestion>() {
-
-				@Override
-				public int compare(InputSuggestion o1, InputSuggestion o2) {
-					return o1.getContent().length() - o2.getContent().length();
-				}
-				
-			});
-		}
-		if (suggestions.size() > InputAssistBehavior.MAX_SUGGESTIONS)
-			return suggestions.subList(0, InputAssistBehavior.MAX_SUGGESTIONS);
-		else
-			return suggestions;
+		return suggestions;
 	}
 	
 	public static List<InputSuggestion> suggest(Map<String, String> candidates, String matchWith) {
@@ -94,10 +75,13 @@ public class SuggestionUtils {
 		List<InputSuggestion> suggestions = new ArrayList<>();
 		for (Map.Entry<String, String> entry: candidates.entrySet()) {
 			LinearRange match = LinearRange.match(entry.getKey(), matchWith);
-			if (match != null) 
+			if (match != null) {
 				suggestions.add(new InputSuggestion(entry.getKey(), entry.getValue(), match));
+				if (suggestions.size() >= InputAssistBehavior.MAX_SUGGESTIONS)
+					break;
+			}
 		}
-		return sortAndTruncate(suggestions, matchWith);
+		return suggestions;
 	}
 	
 	public static List<InputSuggestion> suggestBranches(@Nullable Project project, String matchWith) {
@@ -154,27 +138,21 @@ public class SuggestionUtils {
 		}, ":");
 	}
 	
-	private static ProjectManager getProjectManager() {
-		return OneDev.getInstance(ProjectManager.class);
-	}
-	
 	public static List<InputSuggestion> suggestProjectPaths(String matchWith) {
-		Collection<Project> projects = getProjectManager().getPermittedProjects(new AccessProject());
-		ProjectCache cache = getProjectManager().cloneCache();
-		
-		List<String> projectPaths = projects.stream()
-				.map(it->cache.getPath(it.getId()))
+		ProjectManager projectManager = OneDev.getInstance(ProjectManager.class);
+		List<String> projectPaths = projectManager.getPermittedProjects(new AccessProject())
+				.stream()
+				.map(it->it.getPath())
 				.sorted()
 				.collect(Collectors.toList());
 		return suggest(projectPaths, matchWith);
 	}
 	
 	public static List<InputSuggestion> suggestProjectNames(String matchWith) {
-		Collection<Project> projects = getProjectManager().getPermittedProjects(new AccessProject());
-		ProjectCache cache = getProjectManager().cloneCache();
-		
-		List<String> projectNames = projects.stream()
-				.map(it->cache.get(it.getId()).getName())
+		ProjectManager projectManager = OneDev.getInstance(ProjectManager.class);
+		List<String> projectNames = projectManager.getPermittedProjects(new AccessProject())
+				.stream()
+				.map(it->it.getName())
 				.sorted()
 				.collect(Collectors.toList());
 		return suggest(projectNames, matchWith);
@@ -193,6 +171,7 @@ public class SuggestionUtils {
 			@Nullable List<ParamSpec> paramSpecs, String matchWith, boolean withBuildVersion, 
 			boolean withDynamicVariables) {
 		String lowerCaseMatchWith = matchWith.toLowerCase();
+		int numSuggestions = 0;
 		List<InputSuggestion> suggestions = new ArrayList<>();
 		
 		Map<String, String> variables = new LinkedHashMap<>();
@@ -235,41 +214,28 @@ public class SuggestionUtils {
 		
 		for (Map.Entry<String, String> entry: variables.entrySet()) {
 			int index = entry.getKey().toLowerCase().indexOf(lowerCaseMatchWith);
-			if (index != -1) {
+			if (index != -1 && numSuggestions++<InputAssistBehavior.MAX_SUGGESTIONS) {
 				suggestions.add(new InputSuggestion(entry.getKey(), entry.getValue(), 
 						new LinearRange(index, index+lowerCaseMatchWith.length())));
 			}
 		}
-		
-		return sortAndTruncate(suggestions, matchWith);
+		return suggestions;
 	}
 	
 	public static List<InputSuggestion> suggestUsers(String matchWith) {
+		matchWith = matchWith.toLowerCase();
 		List<InputSuggestion> suggestions = new ArrayList<>();
 
-		UserCache cache = OneDev.getInstance(UserManager.class).cloneCache();
-		List<UserFacade> users = new ArrayList<>(cache.values());
-		users.sort(new Comparator<UserFacade>() {
-
-			@Override
-			public int compare(UserFacade o1, UserFacade o2) {
-				return o1.getName().compareTo(o2.getName());
-			}
-			
-		});
-		for (UserFacade user: users) {
+		for (User user: OneDev.getInstance(UserManager.class).query(matchWith, 0, InputAssistBehavior.MAX_SUGGESTIONS)) {
 			LinearRange match = LinearRange.match(user.getName(), matchWith);
-			if (match != null) {
-				String description;
-				if (!user.getDisplayName().equals(user.getName()))
-					description = user.getDisplayName();
-				else
-					description = null;
-				suggestions.add(new InputSuggestion(user.getName(), description, match));
-			}
+			String description;
+			if (!user.getDisplayName().equals(user.getName()))
+				description = user.getDisplayName();
+			else
+				description = null;
+			suggestions.add(new InputSuggestion(user.getName(), description, match));
 		}
-		
-		return sortAndTruncate(suggestions, matchWith);
+		return suggestions;
 	}
 	
 	public static List<InputSuggestion> suggestLinkSpecs(String matchWith) {
@@ -352,16 +318,17 @@ public class SuggestionUtils {
 	
 	public static List<InputSuggestion> suggestBlobs(Project project, String matchWith) {
 		CommitInfoManager commitInfoManager = OneDev.getInstance(CommitInfoManager.class);
-		return suggestByPattern(commitInfoManager.getFiles(project), matchWith);
+		return suggestPaths(commitInfoManager.getFiles(project), matchWith);
 	}
 	
 	private static List<InputSuggestion> suggest(@Nullable Project project, String matchWith, 
 			ProjectScopedSuggester projectScopedSuggester, String scopeSeparator) {
 		if (project == null) {
+			ProjectManager projectManager = OneDev.getInstance(ProjectManager.class);
 			if (matchWith.contains(scopeSeparator)) {
 				String projectName = StringUtils.substringBefore(matchWith, scopeSeparator);
 				matchWith = StringUtils.substringAfter(matchWith, scopeSeparator);
-				project = getProjectManager().findByPath(projectName);
+				project = projectManager.findByPath(projectName);
 				if (project != null) {
 					List<InputSuggestion> projectScopedSuggestions = projectScopedSuggester.suggest(project, matchWith);
 					if (projectScopedSuggestions != null) {
@@ -397,23 +364,19 @@ public class SuggestionUtils {
 				}
 			} else {
 				List<InputSuggestion> suggestions = new ArrayList<>();
-				ProjectCache cache = getProjectManager().cloneCache();
-				List<String> projectPaths = getProjectManager().getPermittedProjects(new AccessProject()).stream()
-						.map(it->cache.getPath(it.getId()))
-						.collect(Collectors.toList());
-				Collections.sort(projectPaths);
-				
-				for (String projectPath: projectPaths) {
-					LinearRange match = LinearRange.match(projectPath + scopeSeparator, matchWith);
+				for (Project each: projectManager.getPermittedProjects(new AccessProject())) {
+					LinearRange match = LinearRange.match(each.getPath() + scopeSeparator, matchWith);
 					if (match != null) {
 						suggestions.add(new InputSuggestion(
-								projectPath + scopeSeparator, 
-								projectPath.length() + scopeSeparator.length(), 
+								each.getPath() + scopeSeparator, 
+								each.getPath().length() + scopeSeparator.length(), 
 								"select project first", 
 								match));
+						if (suggestions.size() >= InputAssistBehavior.MAX_SUGGESTIONS)
+							break;
 					}
 				}
-				return sortAndTruncate(suggestions, matchWith);
+				return suggestions;
 			}
 		} else {
 			return projectScopedSuggester.suggest(project, matchWith);
@@ -450,8 +413,7 @@ public class SuggestionUtils {
 			LinearRange match = LinearRange.match(buildVersion, matchWith);
 			suggestions.add(new InputSuggestion(buildVersion, null, match));
 		}
-		
-		return sortAndTruncate(suggestions, matchWith);
+		return suggestions;
 	}
 	
 	public static List<InputSuggestion> suggestMilestones(Project project, String matchWith) {
@@ -478,13 +440,13 @@ public class SuggestionUtils {
 		return children;
 	}
 	
-	public static List<InputSuggestion> suggestByPattern(List<String> paths, String pattern) {
-		pattern = pattern.toLowerCase();
+	public static List<InputSuggestion> suggestPaths(List<String> paths, String matchWith) {
+		matchWith = matchWith.toLowerCase();
 		List<InputSuggestion> suggestions = new ArrayList<>();
 		
 		List<PatternApplied> allApplied = new ArrayList<>();
 		for (String path: paths) {
-			PatternApplied applied = WildcardUtils.applyPathPattern(pattern, path, false);
+			PatternApplied applied = WildcardUtils.applyPathPattern(matchWith, path, false);
 			if (applied != null) 
 				allApplied.add(applied);
 		}

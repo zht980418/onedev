@@ -22,7 +22,6 @@ import io.onedev.server.entitymanager.SettingManager;
 import io.onedev.server.entitymanager.UrlManager;
 import io.onedev.server.event.RefUpdated;
 import io.onedev.server.git.GitUtils;
-import io.onedev.server.mail.MailManager;
 import io.onedev.server.markdown.MarkdownManager;
 import io.onedev.server.model.CommitQueryPersonalization;
 import io.onedev.server.model.EmailAddress;
@@ -31,8 +30,6 @@ import io.onedev.server.model.User;
 import io.onedev.server.model.support.NamedQuery;
 import io.onedev.server.persistence.annotation.Sessional;
 import io.onedev.server.search.commit.CommitQuery;
-import io.onedev.server.security.permission.ProjectPermission;
-import io.onedev.server.security.permission.ReadCode;
 
 @Singleton
 public class CommitNotificationManager extends AbstractNotificationManager {
@@ -68,49 +65,47 @@ public class CommitNotificationManager extends AbstractNotificationManager {
 	public void on(RefUpdated event) {
 		if (!event.getNewCommitId().equals(ObjectId.zeroId())) {
 			Project project = event.getProject();
+			Map<User, Collection<String>> subscribedQueryStrings = new HashMap<>();
+			for (CommitQueryPersonalization setting: project.getCommitQueryPersonalizations()) {
+				for (String name: setting.getQuerySubscriptionSupport().getQuerySubscriptions()) {
+					String globalName = NamedQuery.getCommonName(name);
+					if (globalName != null) {
+						fillSubscribedQueryStrings(subscribedQueryStrings, setting.getUser(), 
+								NamedQuery.find(project.getNamedCommitQueries(), globalName));
+					}
+					String personalName = NamedQuery.getPersonalName(name);
+					if (personalName != null) {
+						fillSubscribedQueryStrings(subscribedQueryStrings, setting.getUser(), 
+								NamedQuery.find(setting.getQueries(), personalName));
+					}
+				}
+			}
+			
+			Collection<String> notifyEmails = new HashSet<>();
+			for (Map.Entry<User, Collection<String>> entry: subscribedQueryStrings.entrySet()) {
+				User user = entry.getKey();
+				for (String queryString: entry.getValue()) {
+					User.push(user);
+					try {
+						if (CommitQuery.parse(project, queryString).matches(event)) {
+							EmailAddress emailAddress = user.getPrimaryEmailAddress();
+							if (emailAddress != null && emailAddress.isVerified())
+								notifyEmails.add(emailAddress.getValue());
+							break;
+						}
+					} catch (Exception e) {
+						String message = String.format("Error processing commit subscription "
+								+ "(user: %s, project: %s, commit: %s, query: %s)", 
+								user.getName(), project.getPath(), event.getNewCommitId().name(), queryString);
+						logger.error(message, e);
+					} finally {
+						User.pop();
+					}
+				}
+			}
+			
 			RevCommit commit = project.getRevCommit(event.getNewCommitId(), false);
 			if (commit != null) {
-				Map<User, Collection<String>> subscribedQueryStrings = new HashMap<>();
-				for (CommitQueryPersonalization setting: project.getCommitQueryPersonalizations()) {
-					for (String name: setting.getQuerySubscriptionSupport().getQuerySubscriptions()) {
-						String globalName = NamedQuery.getCommonName(name);
-						if (globalName != null) {
-							fillSubscribedQueryStrings(subscribedQueryStrings, setting.getUser(), 
-									NamedQuery.find(project.getNamedCommitQueries(), globalName));
-						}
-						String personalName = NamedQuery.getPersonalName(name);
-						if (personalName != null) {
-							fillSubscribedQueryStrings(subscribedQueryStrings, setting.getUser(), 
-									NamedQuery.find(setting.getQueries(), personalName));
-						}
-					}
-				}
-				
-				Collection<String> notifyEmails = new HashSet<>();
-				for (Map.Entry<User, Collection<String>> entry: subscribedQueryStrings.entrySet()) {
-					User user = entry.getKey();
-					if (user.asSubject().isPermitted(new ProjectPermission(event.getProject(), new ReadCode()))) {
-						for (String queryString: entry.getValue()) {
-							User.push(user);
-							try {
-								if (CommitQuery.parse(project, queryString, true).matches(event)) {
-									EmailAddress emailAddress = user.getPrimaryEmailAddress();
-									if (emailAddress != null && emailAddress.isVerified())
-										notifyEmails.add(emailAddress.getValue());
-									break;
-								}
-							} catch (Exception e) {
-								String message = String.format("Error processing commit subscription "
-										+ "(user: %s, project: %s, commit: %s, query: %s)", 
-										user.getName(), project.getPath(), event.getNewCommitId().name(), queryString);
-								logger.error(message, e);
-							} finally {
-								User.pop();
-							}
-						}
-					}
-				}
-				
 				String target = GitUtils.ref2branch(event.getRefName());
 				if (target == null) {
 					target = GitUtils.ref2tag(event.getRefName());

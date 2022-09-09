@@ -21,9 +21,7 @@ import io.onedev.server.web.editable.annotation.Editable;
 import io.onedev.server.web.editable.annotation.Interpolative;
 
 @Editable(order=150, name="Run Docker Container", description="Run specified docker container. To access files in "
-		+ "job workspace, either use environment variable <tt>JOB_WORKSPACE</tt>, or specify volume mounts. "
-		+ "<b class='text-warning'>NOTE:</b> If this step runs with a Kubernetes executor, the option "
-		+ "<code>mount container sock</code> of that executor must be enabled")
+		+ "job workspace, either use environment variable <tt>JOB_WORKSPACE</tt>, or specify volume mounts")
 public class RunContainerStep extends Step {
 
 	private static final long serialVersionUID = 1L;
@@ -77,7 +75,6 @@ public class RunContainerStep extends Step {
 
 	@Editable(order=200, name="Working Directory", description="Optionally specify working directory of the container")
 	@SafePath
-	@Interpolative(variableSuggester="suggestVariables")
 	@Nullable
 	public String getWorkingDir() {
 		return workingDir;

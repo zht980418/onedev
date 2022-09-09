@@ -19,28 +19,30 @@ import io.onedev.server.util.jetty.ServletConfigurator;
 
 public class ProductModule extends AbstractPluginModule {
 
-	private static final String[] HIBERNATE_PROPS = new String[] {
-			DIALECT, DRIVER, URL, USER, PASS, "hibernate.hikari.leakDetectionThreshold", 
-			"hibernate.hikari.maxLifetime", "hibernate.hikari.connectionTimeout", 
-			"hibernate.hikari.maximumPoolSize", "hibernate.hikari.validationTimeout",
-			"hibernate.show_sql"
-	};
-	
     @Override
 	protected void configure() {
 		super.configure();
-		
+//		System.out.println("productModuel configure");
 		File file = new File(Bootstrap.installDir, "conf/hibernate.properties"); 
 		HibernateProperties hibernateProps = new HibernateProperties(FileUtils.loadProperties(file));
 		String url = hibernateProps.getProperty(URL);
 		hibernateProps.setProperty(URL, 
 				StringUtils.replace(url, "${installDir}", Bootstrap.installDir.getAbsolutePath()));
 		
-		for (String prop: HIBERNATE_PROPS) {
-			String env = System.getenv(prop.replace('.', '_'));
-			if (env != null)
-				hibernateProps.setProperty(prop, env);
-		}
+		if (System.getenv(DIALECT.replace('.', '_')) != null)
+			hibernateProps.setProperty(DIALECT, System.getenv(DIALECT.replace('.', '_')));
+		if (System.getenv(DRIVER.replace('.', '_')) != null)
+			hibernateProps.setProperty(DRIVER, System.getenv(DRIVER.replace('.', '_')));
+		if (System.getenv(URL.replace('.', '_')) != null)
+			hibernateProps.setProperty(URL, System.getenv(URL.replace('.', '_')));
+		if (System.getenv(USER.replace('.', '_')) != null)
+			hibernateProps.setProperty(USER, System.getenv(USER.replace('.', '_')));
+		if (System.getenv(PASS.replace('.', '_')) != null)
+			hibernateProps.setProperty(PASS, System.getenv(PASS.replace('.', '_')));
+		
+		String maxPoolSizeProp = "hibernate.hikari.maximumPoolSize";
+		if (System.getenv(maxPoolSizeProp.replace('.', '_')) != null)
+			hibernateProps.setProperty(maxPoolSizeProp, System.getenv(maxPoolSizeProp.replace('.', '_')));
 		
 		bind(HibernateProperties.class).toInstance(hibernateProps);
 		

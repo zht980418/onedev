@@ -88,19 +88,26 @@ public class DefaultResourceManager implements ResourceManager {
 	@Listen
 	public void on(AgentConnected event) {
 		Long agentId = event.getAgent().getId();
-		sessionManager.runAsyncAfterCommit(new Runnable() {
+		transactionManager.runAfterCommit(new Runnable() {
 
 			@Override
 			public void run() {
-				synchronized (DefaultResourceManager.this) {
-					Agent agent = agentManager.load(agentId);
-					agentResourceHolders.put(agentId, new ResourceHolder(agent.getResources()));
-					for (QueryCache cache: queryCaches.values()) {
-						if (cache.query.matches(agent))
-							cache.result.add(agentId);
+				sessionManager.runAsync(new Runnable() {
+
+					@Override
+					public void run() {
+						synchronized (DefaultResourceManager.this) {
+							Agent agent = agentManager.load(agentId);
+							agentResourceHolders.put(agentId, new ResourceHolder(agent.getResources()));
+							for (QueryCache cache: queryCaches.values()) {
+								if (cache.query.matches(agent))
+									cache.result.add(agentId);
+							}
+							DefaultResourceManager.this.notifyAll();
+						}
 					}
-					DefaultResourceManager.this.notifyAll();
-				}
+					
+				});
 			}
 			
 		});

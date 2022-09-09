@@ -1,6 +1,5 @@
 package io.onedev.server.web.page.project.pullrequests.detail.operationconfirm;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import javax.annotation.Nullable;
@@ -16,7 +15,6 @@ import io.onedev.server.entitymanager.UserManager;
 import io.onedev.server.model.Project;
 import io.onedev.server.model.User;
 import io.onedev.server.security.SecurityUtils;
-import io.onedev.server.util.facade.UserCache;
 import io.onedev.server.web.component.markdown.AttachmentSupport;
 import io.onedev.server.web.component.modal.ModalPanel;
 import io.onedev.server.web.component.project.comment.CommentInput;
@@ -50,10 +48,8 @@ public abstract class CommentableOperationConfirmPanel extends OperationConfirmP
 
 			@Override
 			protected List<User> getMentionables() {
-				UserCache cache = OneDev.getInstance(UserManager.class).cloneCache();		
-				List<User> users = new ArrayList<>(cache.getUsers());
-				users.sort(cache.comparingDisplayName(getLatestUpdate().getRequest().getParticipants()));
-				return users;
+				return OneDev.getInstance(UserManager.class)
+						.queryAndSort(getLatestUpdate().getRequest().getParticipants());
 			}
 			
 			@Override

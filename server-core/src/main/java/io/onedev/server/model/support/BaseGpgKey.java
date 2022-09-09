@@ -1,11 +1,9 @@
 package io.onedev.server.model.support;
 
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import javax.persistence.Column;
-import javax.persistence.Lob;
 import javax.persistence.MappedSuperclass;
 import javax.validation.ConstraintValidatorContext;
 
@@ -29,13 +27,8 @@ public class BaseGpgKey extends AbstractEntity implements Validatable {
     
     public static final String PROP_CONTENT = "content";
     
-    /**
-     * 1. GpgKey can be very long
-     * 2. Use bytea of postgresql to store this field avoid auto committing issue of lob 
-     */
-	@Lob
-	@Column(length=65535, nullable=false)
-    private byte[] content;
+    @Column(nullable=false, length=5000)
+    private String content;
     
     private transient List<PGPPublicKey> publicKeys;
 
@@ -44,22 +37,16 @@ public class BaseGpgKey extends AbstractEntity implements Validatable {
     @Multiline
     @OmitName
     public String getContent() {
-    	if (content != null)
-    		return new String(content, StandardCharsets.UTF_8);
-    	else
-    		return null;
+        return content;
     }
 
     public void setContent(String content) {
-    	if (content != null)
-    		this.content = content.getBytes(StandardCharsets.UTF_8);
-    	else
-    		this.content = null;
+        this.content = content;
     }
 
 	public List<PGPPublicKey> getPublicKeys() {
 		if (publicKeys == null)
-			publicKeys = GpgUtils.parse(getContent());
+			publicKeys = GpgUtils.parse(content);
 		return publicKeys;
 	}
 	
@@ -73,7 +60,7 @@ public class BaseGpgKey extends AbstractEntity implements Validatable {
 			return true;
 		} else {
 			try {
-				GpgUtils.parse(getContent());
+				GpgUtils.parse(content);
 				return true;
 			} catch (Exception e) {
 				context.disableDefaultConstraintViolation();

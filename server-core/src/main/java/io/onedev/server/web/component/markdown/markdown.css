@@ -237,24 +237,28 @@
 	width: 1.5rem; 
 	height: 1.5rem;
 }
-.markdown-rendered table.table {
+.dark-mode .markdown-rendered table:not('.text-diff') thead {
+	color: var(--light);
+}
+.markdown-rendered table:not('.text-diff') {
 	width: auto; 
 	margin-bottom: 1rem;
 }
-.markdown-rendered table.table th, 
-.markdown-rendered table.table td {
+.markdown-rendered table:not('.text-diff') th, 
+.markdown-rendered table:not('.text-diff') td {
+	padding: 0.4rem 0.8rem; 
 	border: 1px solid var(--secondary);
-	word-break: break-word !important;
-    overflow-wrap: break-word !important;
+	word-break: break-word!important;
+    overflow-wrap: break-word!important;
 }
-.dark-mode .markdown-rendered table.table th, 
-.dark-mode .markdown-rendered table.table td {
+.dark-mode .markdown-rendered table:not('.text-diff') th, 
+.dark-mode .markdown-rendered table:not('.text-diff') td {
 	border-color: var(--dark-mode-lighter-dark);
 }
-.markdown-rendered table.table tr:nth-child(odd) td {
+.markdown-rendered table:not('.text-diff') tr:nth-child(even) td {
 	background: var(--light);
 }
-.dark-mode .markdown-rendered table.table tr:nth-child(odd) td {
+.dark-mode .markdown-rendered table:not('.text-diff') tr:nth-child(even) td {
 	background: #1b1b29;
 }
 .markdown-rendered h1, .markdown-rendered h2, .markdown-rendered h3, 
@@ -351,27 +355,21 @@
 
 .markdown-rendered h1 .header-link {
 	margin-left: -24px;
-	margin-top: -4px;
 }
 .markdown-rendered h2 .header-link {
 	margin-left: -22px;
-	margin-top: -4px;
 }
 .markdown-rendered h3 .header-link {
 	margin-left: -20px;
-	margin-top: -3px;
 }
 .markdown-rendered h4 .header-link {
 	margin-left: -18px;
-	margin-top: -2px;
 }
 .markdown-rendered h5 .header-link {
 	margin-left: -16px;
-	margin-top: -2px;
 }
 .markdown-rendered h6 .header-link {
 	margin-left: -14px;
-	margin-top: -2px;
 }
 
 .markdown-rendered h1 {
@@ -468,8 +466,4 @@
 .markdown-rendered .no-color * {
 	color: inherit !important;
 	background-color: inherit !important;
-}
-
-.markdown-rendered>p:last-child {
-	margin-bottom: 0;
 }

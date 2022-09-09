@@ -53,7 +53,6 @@ import io.onedev.server.model.PullRequestComment;
 import io.onedev.server.model.PullRequestUpdate;
 import io.onedev.server.model.User;
 import io.onedev.server.security.SecurityUtils;
-import io.onedev.server.util.facade.UserCache;
 import io.onedev.server.web.ajaxlistener.ConfirmLeaveListener;
 import io.onedev.server.web.behavior.WebSocketObserver;
 import io.onedev.server.web.component.markdown.AttachmentSupport;
@@ -294,10 +293,7 @@ public class PullRequestActivitiesPage extends PullRequestDetailPage {
 				
 				@Override
 				protected List<User> getMentionables() {
-					UserCache cache = OneDev.getInstance(UserManager.class).cloneCache();		
-					List<User> users = new ArrayList<>(cache.getUsers());
-					users.sort(cache.comparingDisplayName(getPullRequest().getParticipants()));
-					return users;
+					return OneDev.getInstance(UserManager.class).queryAndSort(getPullRequest().getParticipants());
 				}
 				
 				@Override
@@ -309,7 +305,7 @@ public class PullRequestActivitiesPage extends PullRequestDetailPage {
 			input.setRequired(true).setLabel(Model.of("Comment"));
 			form.add(input);
 			
-			form.add(new FencedFeedbackPanel("feedback", form));
+			form.add(new FencedFeedbackPanel("feedback", input));
 			
 			form.add(new AjaxSubmitLink("save") {
 
@@ -317,20 +313,14 @@ public class PullRequestActivitiesPage extends PullRequestDetailPage {
 				protected void onSubmit(AjaxRequestTarget target, Form<?> form) {
 					super.onSubmit(target, form);
 
-					String content = input.getModelObject();
-					if (content.length() > PullRequestComment.MAX_CONTENT_LEN) {
-						form.error("Comment too long");
-						target.add(form);
-					} else {
-						PullRequestComment comment = new PullRequestComment();
-						comment.setRequest(getPullRequest());
-						comment.setUser(getLoginUser());
-						comment.setContent(input.getModelObject());
-						OneDev.getInstance(PullRequestCommentManager.class).save(comment);
-						input.clearMarkdown();
+					PullRequestComment comment = new PullRequestComment();
+					comment.setRequest(getPullRequest());
+					comment.setUser(getLoginUser());
+					comment.setContent(input.getModelObject());
+					OneDev.getInstance(PullRequestCommentManager.class).save(comment);
+					input.clearMarkdown();
 
-						target.add(fragment);
-					}
+					target.add(fragment);
 				}
 
 				@Override

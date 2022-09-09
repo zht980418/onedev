@@ -5,12 +5,8 @@ import java.util.List;
 
 import javax.annotation.Nullable;
 
-import org.apache.shiro.authz.Permission;
-
-import io.onedev.server.model.Project;
 import io.onedev.server.model.User;
 import io.onedev.server.persistence.dao.EntityManager;
-import io.onedev.server.util.facade.UserCache;
 
 public interface UserManager extends EntityManager<User> {
 	
@@ -79,12 +75,10 @@ public interface UserManager extends EntityManager<User> {
 	
 	int count(String term);
 	
+	List<User> queryAndSort(Collection<User> topUsers);
+	
 	void onRenameSsoConnector(String oldName, String newName);
 	 
 	void onDeleteSsoConnector(String name);
-
-	Collection<User> getAuthorizedUsers(Project project, Permission permission);
-	
-	UserCache cloneCache();
 	
 }

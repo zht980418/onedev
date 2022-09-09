@@ -55,6 +55,11 @@ public class StateTransitionListPage extends IssueSettingPage {
 		add(new ModalLink("addNew") {
 
 			@Override
+			protected String getModalCssClass() {
+				return "modal-lg";
+			}
+
+			@Override
 			protected Component newContent(String id, ModalPanel modal) {
 				return new TransitionEditPanel(id, -1) {
 
@@ -104,27 +109,37 @@ public class StateTransitionListPage extends IssueSettingPage {
 			
 		});		
 		
-		columns.add(new AbstractColumn<TransitionSpec, Void>(Model.of("")) {
+		columns.add(new AbstractColumn<TransitionSpec, Void>(Model.of("From States")) {
 
 			@Override
 			public void populateItem(Item<ICellPopulator<TransitionSpec>> cellItem, String componentId, IModel<TransitionSpec> rowModel) {
 				TransitionSpec transition = rowModel.getObject();
-				Fragment fragment = new Fragment(componentId, "descriptionFrag", StateTransitionListPage.this);
-				if (transition.getFromStates().size() > 1)
-					fragment.add(new Label("fromStates", "[" + StringUtils.join(transition.getFromStates(), ",") + "]"));
-				else
-					fragment.add(new Label("fromStates", transition.getFromStates().iterator().next()));
-				
-				fragment.add(new Label("toState", transition.getToState()));
+				cellItem.add(new Label(componentId, StringUtils.join(transition.getFromStates())));
+			}
+			
+		});		
+		
+		columns.add(new AbstractColumn<TransitionSpec, Void>(Model.of("To State")) {
 
-				fragment.add(new Label("when", "When " + transition.getTrigger().getDescription()));
+			@Override
+			public void populateItem(Item<ICellPopulator<TransitionSpec>> cellItem, String componentId, IModel<TransitionSpec> rowModel) {
+				TransitionSpec transition = rowModel.getObject();
+				cellItem.add(new Label(componentId, transition.getToState()));
+			}
+			
+		});		
+		
+		columns.add(new AbstractColumn<TransitionSpec, Void>(Model.of("Do Transition When")) {
 
-				if (transition.getTrigger().getIssueQuery() != null)
-					fragment.add(new Label("applicable", "For issues matching: " + transition.getTrigger().getIssueQuery()));
-				else
-					fragment.add(new Label("applicable", "For all issues"));
-				
-				cellItem.add(fragment);
+			@Override
+			public void populateItem(Item<ICellPopulator<TransitionSpec>> cellItem, String componentId, IModel<TransitionSpec> rowModel) {
+				TransitionSpec transition = rowModel.getObject();
+				cellItem.add(new Label(componentId, transition.getTrigger().getDescription()));
+			}
+
+			@Override
+			public String getCssClass() {
+				return "d-none d-lg-table-cell";
 			}
 			
 		});		
@@ -137,6 +152,11 @@ public class StateTransitionListPage extends IssueSettingPage {
 				Fragment fragment = new Fragment(componentId, "actionColumnFrag", StateTransitionListPage.this);
 				fragment.add(new ModalLink("edit") {
 	
+					@Override
+					protected String getModalCssClass() {
+						return "modal-lg";
+					}
+					
 					@Override
 					protected Component newContent(String id, ModalPanel modal) {
 						return new TransitionEditPanel(id, transitionIndex) {

@@ -57,7 +57,7 @@ public class PullRequestQuery extends EntityQuery<PullRequest> {
 		this(null);
 	}
 	
-	public static PullRequestQuery parse(@Nullable Project project, @Nullable String queryString, boolean withCurrentUserCriteria) {
+	public static PullRequestQuery parse(@Nullable Project project, @Nullable String queryString) {
 		if (queryString != null) {
 			CharStream is = CharStreams.fromString(queryString); 
 			PullRequestQueryLexer lexer = new PullRequestQueryLexer(is);
@@ -91,24 +91,14 @@ public class PullRequestQuery extends EntityQuery<PullRequest> {
 						case PullRequestQueryLexer.Discarded:
 							return new DiscardedCriteria();
 						case PullRequestQueryLexer.SubmittedByMe:
-							if (!withCurrentUserCriteria)
-								throw new ExplicitException("Criteria '" + ctx.operator.getText() + "' is not supported here");
 							return new SubmittedByMeCriteria();
 						case PullRequestQueryLexer.ToBeReviewedByMe:
-							if (!withCurrentUserCriteria)
-								throw new ExplicitException("Criteria '" + ctx.operator.getText() + "' is not supported here");
 							return new ToBeReviewedByMeCriteria();
 						case PullRequestQueryLexer.RequestedForChangesByMe:
-							if (!withCurrentUserCriteria)
-								throw new ExplicitException("Criteria '" + ctx.operator.getText() + "' is not supported here");
 							return new RequestedForChangesByMeCriteria();
 						case PullRequestQueryLexer.ApprovedByMe:
-							if (!withCurrentUserCriteria)
-								throw new ExplicitException("Criteria '" + ctx.operator.getText() + "' is not supported here");
 							return new ApprovedByMeCriteria();
 						case PullRequestQueryLexer.AssignedToMe:
-							if (!withCurrentUserCriteria)
-								throw new ExplicitException("Criteria '" + ctx.operator.getText() + "' is not supported here");
 							return new AssignedToMeCriteria();
 						case PullRequestQueryLexer.SomeoneRequestedForChanges:
 							return new SomeoneRequestedForChangesCriteria();

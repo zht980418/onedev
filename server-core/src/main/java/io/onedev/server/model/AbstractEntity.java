@@ -67,37 +67,28 @@ public abstract class AbstractEntity implements Serializable, Comparable<Abstrac
 	}
 
 	@Override
-	public final boolean equals(Object other) {
-		return equals(this, other);
-	}
-
-	@Override
-	public final int hashCode() {
-		return hashCode(this);
-	}
-	
-	public static boolean equals(Object o1, Object o2) {
-		if (o1 == o2) {
+	public boolean equals(Object other) {
+		if (this == other) {
 			return true;
-		} else if (o1 instanceof AbstractEntity && o2 instanceof AbstractEntity) {
-			Long id1 = ((AbstractEntity) o1).getId();
-			Long id2 = ((AbstractEntity) o2).getId();
-			if (id1 != null && id2 != null)
-				return new EqualsBuilder().append(id1, id2).isEquals();
+		} else if (other instanceof AbstractEntity) {
+			AbstractEntity otherEntity = (AbstractEntity) other;
+			if (getId() == null || otherEntity.getId() == null)
+				return super.equals(other);
 			else 
-				return false;
+				return new EqualsBuilder().append(getId(), otherEntity.getId()).isEquals();
 		} else {
 			return false;
 		}
 	}
-	
-	public static int hashCode(AbstractEntity entity) {
-		if (entity.getId() != null)
-			return new HashCodeBuilder(17, 37).append(entity.getId()).toHashCode();
+
+	@Override
+	public int hashCode() {
+		if (getId() == null)
+			return super.hashCode();
 		else
-			return System.identityHashCode(entity);
+			return new HashCodeBuilder(17, 37).append(getId()).toHashCode();
 	}
-	
+
 	@Override
 	public int compareTo(AbstractEntity entity) {
 		if (getId() != null) {
@@ -130,8 +121,7 @@ public abstract class AbstractEntity implements Serializable, Comparable<Abstrac
 	 * @param entity
 	 * @return
 	 */
-	@Nullable
-	public static Long idOf(@Nullable AbstractEntity entity) {
+	public static @Nullable Long idOf(@Nullable AbstractEntity entity) {
 		if (entity == null) {
 			return null;
 		} else if (entity instanceof HibernateProxy) {

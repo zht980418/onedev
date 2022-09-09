@@ -1,14 +1,15 @@
 package io.onedev.server.entitymanager.impl;
 
 import java.util.Arrays;
-import java.util.Iterator;
+import java.util.Collection;
 import java.util.Map;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jgit.lib.PersonIdent;
 
 import com.google.common.base.Preconditions;
@@ -20,17 +21,15 @@ import io.onedev.server.entitymanager.SettingManager;
 import io.onedev.server.event.entity.EntityPersisted;
 import io.onedev.server.event.entity.EntityRemoved;
 import io.onedev.server.event.system.SystemStarted;
-import io.onedev.server.mail.MailManager;
 import io.onedev.server.model.EmailAddress;
 import io.onedev.server.model.User;
+import io.onedev.server.notification.MailManager;
 import io.onedev.server.persistence.SessionManager;
 import io.onedev.server.persistence.TransactionManager;
 import io.onedev.server.persistence.annotation.Sessional;
 import io.onedev.server.persistence.annotation.Transactional;
 import io.onedev.server.persistence.dao.BaseEntityManager;
 import io.onedev.server.persistence.dao.Dao;
-import io.onedev.server.util.facade.EmailAddressFacade;
-import io.onedev.server.util.facade.EmailAddressFacades;
 
 @Singleton
 public class DefaultEmailAddressManager extends BaseEntityManager<EmailAddress> implements EmailAddressManager {
@@ -43,9 +42,7 @@ public class DefaultEmailAddressManager extends BaseEntityManager<EmailAddress> 
 	
 	private final SessionManager sessionManager;
 	
-	private final EmailAddressFacades cache = new EmailAddressFacades();
-	
-	private final ReadWriteLock cacheLock = new ReentrantReadWriteLock();
+	private final Map<String, Long> idCache = new ConcurrentHashMap<>();
 	
     @Inject
     public DefaultEmailAddressManager(Dao dao, SettingManager settingManager, MailManager mailManager, 
@@ -60,83 +57,55 @@ public class DefaultEmailAddressManager extends BaseEntityManager<EmailAddress> 
     @Listen
     @Sessional
     public void on(SystemStarted event) {
-    	cacheLock.writeLock().lock();
-    	try {
-	    	for (EmailAddress address: query())
-	    		cache.put(address.getId(), address.getFacade());
-    	} finally {
-    		cacheLock.writeLock().unlock();
-    	}
+    	for (EmailAddress address: query())
+    		idCache.put(address.getValue(), address.getId());
     }
     
     @Sessional
     @Override
     public EmailAddress findByValue(String value) {
-    	cacheLock.readLock().lock();
-    	try {
-    		EmailAddressFacade facade = cache.findByValue(value);
-    		if (facade != null)
-    			return load(facade.getId());
-    		else
-    			return null;
-    	} finally {
-    		cacheLock.readLock().unlock();
-    	}
+    	Long id = idCache.get(value.toLowerCase());
+    	return id != null? load(id): null;
     }
 
     @Sessional
     @Override
     public EmailAddress findByPersonIdent(PersonIdent personIdent) {
-    	cacheLock.readLock().lock();
-    	try {
-    		EmailAddressFacade facade = cache.findByPersonIdent(personIdent);
-    		if (facade != null)
-    			return load(facade.getId());
-    		else
-    			return null;
-    	} finally {
-    		cacheLock.readLock().unlock();
-    	}
+    	if (StringUtils.isNotBlank(personIdent.getEmailAddress()))
+    		return findByValue(personIdent.getEmailAddress());
+    	else
+    		return null;
     }
     
     @Transactional
 	@Override
 	public void setAsPrimary(EmailAddress emailAddress) {
-    	for (EmailAddress each: emailAddress.getOwner().getEmailAddresses()) {
+    	for (EmailAddress each: emailAddress.getOwner().getEmailAddresses())
     		each.setPrimary(false);
-    		dao.persist(each);
-    	}
     	emailAddress.setPrimary(true);
-    	dao.persist(emailAddress);
 	}
 
     @Transactional
 	@Override
 	public void useForGitOperations(EmailAddress emailAddress) {
-    	for (EmailAddress each: emailAddress.getOwner().getEmailAddresses()) {
+    	for (EmailAddress each: emailAddress.getOwner().getEmailAddresses())
     		each.setGit(false);
-    		dao.persist(each);
-    	}
     	emailAddress.setGit(true);
-    	dao.persist(emailAddress);
 	}
 
     @Transactional
     @Override
 	public void delete(EmailAddress emailAddress) {
 		super.delete(emailAddress);
-
-		if (emailAddress.isPrimary() || emailAddress.isGit()) {
-			User user = emailAddress.getOwner();
-			user.getEmailAddresses().remove(emailAddress);
-			if (!user.getSortedEmailAddresses().isEmpty()) {
-				EmailAddress firstEmailAddress = user.getSortedEmailAddresses().iterator().next();
-				if (emailAddress.isPrimary()) 
-					firstEmailAddress.setPrimary(true);
-				if (emailAddress.isGit())
-					firstEmailAddress.setGit(true);
-				dao.persist(firstEmailAddress);
-			}
+		
+		User user = emailAddress.getOwner();
+		
+		user.getEmailAddresses().remove(emailAddress);
+		if (!user.getSortedEmailAddresses().isEmpty()) {
+			if (user.getPrimaryEmailAddress() == null)
+				user.getSortedEmailAddresses().iterator().next().setPrimary(true);
+			if (user.getGitEmailAddress() == null)
+				user.getSortedEmailAddresses().iterator().next().setGit(true);
 		}
 	}
 
@@ -151,17 +120,24 @@ public class DefaultEmailAddressManager extends BaseEntityManager<EmailAddress> 
 			emailAddress.setPrimary(true);
 			emailAddress.setGit(true);
 		}
-		dao.persist(emailAddress);
+		super.save(emailAddress);
 		
 		user.getEmailAddresses().add(emailAddress);
 		
 		if (isNew && settingManager.getMailSetting() != null && !emailAddress.isVerified()) {
 			Long addressId = emailAddress.getId();
-			sessionManager.runAsyncAfterCommit(new Runnable() {
+			transactionManager.runAfterCommit(new Runnable() {
 
 				@Override
 				public void run() {
-					sendVerificationEmail(load(addressId));
+					sessionManager.runAsync(new Runnable() {
+
+						@Override
+						public void run() {
+							sendVerificationEmail(load(addressId));
+						}
+						
+					});
 				}
 				
 			});
@@ -172,35 +148,24 @@ public class DefaultEmailAddressManager extends BaseEntityManager<EmailAddress> 
     @Listen
     public void on(EntityRemoved event) {
     	if (event.getEntity() instanceof EmailAddress) {
-    		Long id = event.getEntity().getId();
+    		String value = ((EmailAddress)event.getEntity()).getValue();
     		transactionManager.runAfterCommit(new Runnable() {
 
 				@Override
 				public void run() {
-			    	cacheLock.writeLock().lock();
-			    	try {
-			    		cache.remove(id);
-			    	} finally {
-			    		cacheLock.writeLock().unlock();
-			    	}
+					idCache.remove(value);
 				}
     			
     		});
     	} else if (event.getEntity() instanceof User) {
-    		Long ownerId = event.getEntity().getId();
+    		User user = (User) event.getEntity();
+    		Collection<String> values = user.getEmailAddresses().stream()
+    				.map(it->it.getValue()).collect(Collectors.toList());
     		transactionManager.runAfterCommit(new Runnable() {
 
 				@Override
 				public void run() {
-			    	cacheLock.writeLock().lock();
-			    	try {
-			    		for (Iterator<Map.Entry<Long, EmailAddressFacade>> it = cache.entrySet().iterator(); it.hasNext();) {
-			    			if (it.next().getValue().getOwnerId().equals(ownerId))
-			    				it.remove();
-			    		}
-			    	} finally {
-			    		cacheLock.writeLock().unlock();
-			    	}
+					idCache.keySet().removeAll(values);
 				}
     			
     		});
@@ -211,17 +176,14 @@ public class DefaultEmailAddressManager extends BaseEntityManager<EmailAddress> 
     @Listen
     public void on(EntityPersisted event) {
     	if (event.getEntity() instanceof EmailAddress) {
-    		EmailAddressFacade facade = ((EmailAddress) event.getEntity()).getFacade();
+    		EmailAddress emailAddress = (EmailAddress) event.getEntity();
+    		String value = emailAddress.getValue();
+    		Long id = emailAddress.getId();
     		transactionManager.runAfterCommit(new Runnable() {
 
 				@Override
 				public void run() {
-			    	cacheLock.writeLock().lock();
-			    	try {
-			    		cache.put(facade.getId(), facade);
-			    	} finally {
-			    		cacheLock.writeLock().unlock();
-			    	}
+					idCache.put(value, id);
 				}
     			
     		});
@@ -238,7 +200,7 @@ public class DefaultEmailAddressManager extends BaseEntityManager<EmailAddress> 
 		String serverUrl = settingManager.getSystemSetting().getServerUrl();
 		
 		String verificationUrl = String.format("%s/verify-email-address/%d/%s", 
-				serverUrl, emailAddress.getId(), emailAddress.getVerificationCode());
+				serverUrl, emailAddress.getId(), emailAddress.getVerficationCode());
 		String htmlBody = String.format("Hello,"
 			+ "<p style='margin: 16px 0;'>"
 			+ "The account \"%s\" at \"%s\" tries to use email address '%s', please visit below link to verify if this is you:<br><br>"
@@ -251,44 +213,11 @@ public class DefaultEmailAddressManager extends BaseEntityManager<EmailAddress> 
 				user.getName(), serverUrl, emailAddress.getValue(), verificationUrl);
 		
 		mailManager.sendMail(
-				settingManager.getMailSetting().getSendSetting(), 
+				settingManager.getMailSetting(), 
 				Arrays.asList(emailAddress.getValue()),
 				Lists.newArrayList(), Lists.newArrayList(), 
 				"[Verification] Please Verify Your Email Address", 
 				htmlBody, textBody, null, null);
 	}
-
-	@Override
-	public EmailAddress findPrimary(User user) {
-    	cacheLock.readLock().lock();
-    	try {
-    		EmailAddressFacade facade = cache.findPrimary(user);
-    		if (facade != null)
-    			return load(facade.getId());
-    		else
-    			return null;
-    	} finally {
-    		cacheLock.readLock().unlock();
-    	}
-	}
-
-	@Override
-	public EmailAddress findGit(User user) {
-    	cacheLock.readLock().lock();
-    	try {
-    		EmailAddressFacade facade = cache.findGit(user);
-    		if (facade != null)
-    			return load(facade.getId());
-    		else
-    			return null;
-    	} finally {
-    		cacheLock.readLock().unlock();
-    	}
-	}
-
-	@Override
-	public EmailAddressFacades cloneCache() {
-		return cache.clone();
-	}
-
+    
 }

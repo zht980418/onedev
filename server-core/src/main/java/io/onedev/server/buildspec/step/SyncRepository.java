@@ -1,9 +1,7 @@
 package io.onedev.server.buildspec.step;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
 import java.util.stream.Collectors;
 
 import javax.validation.ConstraintValidatorContext;
@@ -13,6 +11,7 @@ import org.hibernate.validator.constraints.NotEmpty;
 
 import io.onedev.commons.bootstrap.Bootstrap;
 import io.onedev.commons.codeassist.InputSuggestion;
+import io.onedev.commons.utils.LockUtils;
 import io.onedev.commons.utils.StringUtils;
 import io.onedev.commons.utils.command.Commandline;
 import io.onedev.server.OneDev;
@@ -115,31 +114,29 @@ public abstract class SyncRepository extends ServerSideStep implements Validatab
 	}
 
 	public String getRemoteUrlWithCredential(Build build) {
-		String encodedPassword = null;
-		if (getPasswordSecret() != null) {
-			try {
-				String password = build.getJobSecretAuthorizationContext().getSecretValue(getPasswordSecret());
-				encodedPassword = URLEncoder.encode(password, StandardCharsets.UTF_8.name());
-			} catch (UnsupportedEncodingException e) {
-				throw new RuntimeException(e);
-			}
-		}
+		String password = null;
+		if (getPasswordSecret() != null)
+			password = build.getJobSecretAuthorizationContext().getSecretValue(getPasswordSecret());
 
 		String protocol = StringUtils.substringBefore(getRemoteUrl(), "//");
 		String hostAndPath = StringUtils.substringAfter(getRemoteUrl(), "//");
 		
 		String remoteUrlWithCredentials = protocol + "//";
 		
-		if (getUserName() != null && encodedPassword != null)
-			remoteUrlWithCredentials += getUserName() + ":" + encodedPassword + "@" + hostAndPath;
+		if (getUserName() != null && password != null)
+			remoteUrlWithCredentials += getUserName() + ":" + password + "@" + hostAndPath;
 		else if (getUserName() != null)
 			remoteUrlWithCredentials += getUserName() + "@" + hostAndPath;
-		else if (encodedPassword != null)
-			remoteUrlWithCredentials += encodedPassword + "@" + hostAndPath;
+		else if (password != null)
+			remoteUrlWithCredentials += password + "@" + hostAndPath;
 		else
 			remoteUrlWithCredentials += hostAndPath;
 		
 		return remoteUrlWithCredentials;
+	}
+	
+	protected Lock getMirrorLock(Build build) {
+		return LockUtils.getLock("repository-mirror-" + build.getProject().getId());		
 	}
 	
 	protected Commandline newGit(Project project) {

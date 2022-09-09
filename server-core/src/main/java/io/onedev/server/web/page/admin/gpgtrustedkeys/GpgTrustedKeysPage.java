@@ -27,7 +27,6 @@ import org.apache.wicket.model.Model;
 import org.apache.wicket.request.mapper.parameter.PageParameters;
 import org.bouncycastle.openpgp.PGPPublicKey;
 
-import io.onedev.commons.utils.StringUtils;
 import io.onedev.server.OneDev;
 import io.onedev.server.entitymanager.SettingManager;
 import io.onedev.server.model.support.BaseGpgKey;
@@ -36,7 +35,6 @@ import io.onedev.server.util.GpgUtils;
 import io.onedev.server.util.Path;
 import io.onedev.server.util.PathNode;
 import io.onedev.server.web.ajaxlistener.ConfirmClickListener;
-import io.onedev.server.web.component.MultilineLabel;
 import io.onedev.server.web.component.datatable.DefaultDataTable;
 import io.onedev.server.web.component.modal.ModalLink;
 import io.onedev.server.web.component.modal.ModalPanel;
@@ -59,6 +57,11 @@ public class GpgTrustedKeysPage extends AdministrationPage {
     	super.onInitialize();
     	
     	add(new ModalLink("newKey") {
+
+			@Override
+			protected String getModalCssClass() {
+				return "modal-lg";
+			}
 
 			@Override
 			protected Component newContent(String id, ModalPanel modal) {
@@ -127,6 +130,17 @@ public class GpgTrustedKeysPage extends AdministrationPage {
         
 		List<IColumn<Long, Void>> columns = new ArrayList<>();
 		
+		columns.add(new AbstractColumn<Long, Void>(Model.of("Email Address")) {
+
+			@Override
+			public void populateItem(Item<ICellPopulator<Long>> cellItem, String componentId,
+					IModel<Long> rowModel) {
+				List<PGPPublicKey> trustedKey = getTrustedKey(rowModel.getObject());
+				cellItem.add(new Label(componentId, GpgUtils.getEmailAddress(trustedKey.get(0))));
+			}
+			
+		});
+		
 		columns.add(new AbstractColumn<Long, Void>(Model.of("Key ID")) {
 
 			@Override
@@ -134,18 +148,6 @@ public class GpgTrustedKeysPage extends AdministrationPage {
 					IModel<Long> rowModel) {
 				List<PGPPublicKey> trustedKey = getTrustedKey(rowModel.getObject());
 				cellItem.add(new Label(componentId, GpgUtils.getKeyIDString(trustedKey.get(0).getKeyID())));
-			}
-			
-		});
-		
-		columns.add(new AbstractColumn<Long, Void>(Model.of("Email Addresses")) {
-
-			@Override
-			public void populateItem(Item<ICellPopulator<Long>> cellItem, String componentId,
-					IModel<Long> rowModel) {
-				List<PGPPublicKey> trustedKey = getTrustedKey(rowModel.getObject());
-				String joined = StringUtils.join(GpgUtils.getEmailAddresses(trustedKey.get(0)), "\n");
-				cellItem.add(new MultilineLabel(componentId, joined));
 			}
 			
 		});
@@ -161,9 +163,9 @@ public class GpgTrustedKeysPage extends AdministrationPage {
 						.map(it->it.getKeyID())
 						.filter(it->it!=keyId)
 						.map(it->GpgUtils.getKeyIDString(it))
-						.collect(Collectors.joining("\n"));
+						.collect(Collectors.joining(", "));
 				if (subKeyIds.length() != 0)
-					cellItem.add(new MultilineLabel(componentId, subKeyIds));
+					cellItem.add(new Label(componentId, subKeyIds));
 				else
 					cellItem.add(new Label(componentId, "<i>None</i>").setEscapeModelStrings(false));
 			}

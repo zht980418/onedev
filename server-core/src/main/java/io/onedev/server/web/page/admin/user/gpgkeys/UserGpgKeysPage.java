@@ -1,6 +1,5 @@
 package io.onedev.server.web.page.admin.user.gpgkeys;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.wicket.Component;
@@ -9,7 +8,6 @@ import org.apache.wicket.markup.html.basic.Label;
 import org.apache.wicket.model.LoadableDetachableModel;
 import org.apache.wicket.request.mapper.parameter.PageParameters;
 
-import edu.emory.mathcs.backport.java.util.Collections;
 import io.onedev.server.model.GpgKey;
 import io.onedev.server.model.User;
 import io.onedev.server.web.component.modal.ModalLink;
@@ -33,6 +31,11 @@ public class UserGpgKeysPage extends UserPage {
 		
 		add(new ModalLink("newKey") {
             
+            @Override
+			protected String getModalCssClass() {
+            	return "modal-lg";
+			}
+
 			@Override
             protected Component newContent(String id, ModalPanel modal) {
                 return new InsertGpgKeyPanel(id) {
@@ -62,9 +65,7 @@ public class UserGpgKeysPage extends UserPage {
 			
 		    @Override
 		    protected List<GpgKey> load() {
-		    	List<GpgKey> gpgKeys = new ArrayList<>(getUser().getGpgKeys());
-		    	Collections.sort(gpgKeys);
-		    	return gpgKeys;
+		    	return getUser().getGpgKeys();
 		    }
 		    
 		});

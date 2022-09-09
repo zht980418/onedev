@@ -1,5 +1,7 @@
 package io.onedev.server.web.component.modal;
 
+import javax.annotation.Nullable;
+
 import org.apache.wicket.Component;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.behavior.AttributeAppender;
@@ -43,7 +45,9 @@ public abstract class ModalPanel extends Panel {
 			
 			dialog.add(newContent(CONTENT_ID));
 
-			dialog.add(AttributeAppender.append("class", getCssClass()));
+			String cssClass = getCssClass();
+			if (cssClass != null)
+				dialog.add(AttributeAppender.append("class", cssClass));
 			
 			inited = true;
 		}
@@ -81,8 +85,9 @@ public abstract class ModalPanel extends Panel {
 	
 	protected abstract Component newContent(String id);
 	
+	@Nullable
 	protected String getCssClass() {
-		return "modal-lg";
+		return null;
 	}
 
 	public Component getContent() {

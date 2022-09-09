@@ -65,8 +65,8 @@ import io.onedev.server.util.usage.InUseException;
 import io.onedev.server.web.component.svg.SpriteImageResolver;
 import io.onedev.server.web.mapper.BaseResourceMapper;
 import io.onedev.server.web.mapper.BaseUrlMapper;
-import io.onedev.server.web.page.HomePage;
 import io.onedev.server.web.page.base.BasePage;
+import io.onedev.server.web.page.layout.MainMenuCustomization;
 import io.onedev.server.web.page.simple.error.GeneralErrorPage;
 import io.onedev.server.web.page.simple.error.InUseErrorPage;
 import io.onedev.server.web.resource.SpriteResourceReference;
@@ -80,9 +80,13 @@ public class WebApplication extends org.apache.wicket.protocol.http.WebApplicati
 	
 	private final Set<WebApplicationConfigurator> applicationConfigurators;
 	
+	private final MainMenuCustomization uiCustomization;
+
 	@Inject
-	public WebApplication(Set<WebApplicationConfigurator> applicationConfigurators) {
+	public WebApplication(Set<WebApplicationConfigurator> applicationConfigurators, 
+			MainMenuCustomization uiCustomization) {
 		this.applicationConfigurators = applicationConfigurators;
+		this.uiCustomization = uiCustomization;
 	}
 	
 	@Override
@@ -196,8 +200,10 @@ public class WebApplication extends org.apache.wicket.protocol.http.WebApplicati
 
 			@Override
 			protected void encodePageComponentInfo(Url url, PageComponentInfo info) {
-				if (info.getComponentInfo() != null)
+				if (info.getComponentInfo() != null){
+//					System.out.println("WebApplication componentInfo"+info.getComponentInfo());
 					super.encodePageComponentInfo(url, info);
+				}
 			}
 			
 		});
@@ -282,7 +288,7 @@ public class WebApplication extends org.apache.wicket.protocol.http.WebApplicati
 
 	@Override
 	public Class<? extends Page> getHomePage() {
-		return HomePage.class;
+		return uiCustomization.getHomePage();
 	}
 
 	@Override

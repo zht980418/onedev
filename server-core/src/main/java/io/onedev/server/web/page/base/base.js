@@ -848,8 +848,7 @@ onedev.server = {
 		return intervals.join(" ");
 	},
 	
-	onDomReady: function(bootTimestamp, icons, popStateCallback) {
-		onedev.server.bootTimestamp = bootTimestamp;
+	onDomReady: function(icons, popStateCallback) {
 		onedev.server.icons = icons;
 		
 		$(window).resize(function() {

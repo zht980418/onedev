@@ -22,7 +22,7 @@ public interface WizardStep extends Serializable {
 	@Nullable
 	String getDescription();
 	
-	void init();
+	Skippable getSkippable();
 	
 	void complete();
 	

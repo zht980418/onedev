@@ -6,7 +6,6 @@ import javax.annotation.Nullable;
 
 import io.onedev.server.model.PullRequest;
 import io.onedev.server.model.User;
-import io.onedev.server.persistence.dao.Dao;
 
 public class PullRequestAssigned extends PullRequestEvent {
 
@@ -25,15 +24,6 @@ public class PullRequestAssigned extends PullRequestEvent {
 	@Nullable
 	public User getAssignee() {
 		return assignee;
-	}
-
-	@Override
-	public PullRequestEvent cloneIn(Dao dao) {
-		return new PullRequestAssigned(
-				dao.load(User.class, getUser().getId()),
-				getDate(),
-				dao.load(PullRequest.class, getRequest().getId()), 
-				dao.load(User.class, assignee.getId()));
 	}
 	
 }

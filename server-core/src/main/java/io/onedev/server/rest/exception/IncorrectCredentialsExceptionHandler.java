@@ -15,7 +15,7 @@ public class IncorrectCredentialsExceptionHandler extends AbstractExceptionHandl
     public Response getResponse(IncorrectCredentialsException exception) {
 		return Response
 				.status(Response.Status.UNAUTHORIZED)
-				.entity("Invalid credentials")
+				.entity("Incorrect credentials")
 				.type(MediaType.TEXT_PLAIN)
 				.build();
     }

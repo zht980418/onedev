@@ -35,20 +35,17 @@ public class SsoAuthorizingRealm extends AbstractAuthorizingRealm {
     
     private final SshKeyManager sshKeyManager;
     
-    private final EmailAddressManager emailAddressManager;
-    
 	@Inject
     public SsoAuthorizingRealm(UserManager userManager, MembershipManager membershipManager, 
     		GroupManager groupManager, ProjectManager projectManager, SessionManager sessionManager, 
     		TransactionManager transactionManager, SshKeyManager sshKeyManager, 
     		SettingManager settingManager, EmailAddressManager emailAddressManager) {
-		super(userManager, groupManager, projectManager, sessionManager, settingManager);
+		super(userManager, groupManager, projectManager, sessionManager, settingManager, emailAddressManager);
 		setCredentialsMatcher(new AllowAllCredentialsMatcher());
 		
     	this.membershipManager = membershipManager;
     	this.transactionManager = transactionManager;
     	this.sshKeyManager = sshKeyManager;
-    	this.emailAddressManager = emailAddressManager;
     }
 
 	private User newUser(SsoAuthenticated authenticated) {

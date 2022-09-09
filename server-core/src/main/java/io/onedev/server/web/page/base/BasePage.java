@@ -161,8 +161,7 @@ public abstract class BasePage extends WebPage {
 				response.render(JavaScriptHeaderItem.forReference(new BaseResourceReference()));
 
 				response.render(OnDomReadyHeaderItem.forScript(
-						String.format("onedev.server.onDomReady('%s', '%s', %s);", 
-						String.valueOf(OneDev.getInstance().getBootDate().getTime()), 
+						String.format("onedev.server.onDomReady('%s', %s);", 
 						SpriteImage.getVersionedHref(IconScope.class, null), 
 						popStateBehavior.getCallbackFunction(explicit("data")).toString())));
 				response.render(OnLoadHeaderItem.forScript("onedev.server.onWindowLoad();"));

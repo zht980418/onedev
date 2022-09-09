@@ -1,5 +1,6 @@
 package io.onedev.server.plugin.imports.bitbucketcloud;
 
+import java.io.Serializable;
 import java.util.Collection;
 
 import com.google.common.collect.Lists;
@@ -14,9 +15,6 @@ import io.onedev.server.imports.ProjectImporterContribution;
  */
 
 public class BitbucketPluginModule extends AbstractPluginModule {
-	
-	static final String NAME = "Bitbucket Cloud";
-	
 	@Override
 	protected void configure() {
 		super.configure();
@@ -25,7 +23,7 @@ public class BitbucketPluginModule extends AbstractPluginModule {
 		contribute(ProjectImporterContribution.class, new ProjectImporterContribution() {
 
 			@Override
-			public Collection<ProjectImporter> getImporters() {
+			public Collection<ProjectImporter<? extends Serializable, ? extends Serializable, ? extends Serializable>> getImporters() {
 				return Lists.newArrayList(new BitbucketProjectImporter());
 			}
 

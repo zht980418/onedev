@@ -1,5 +1,7 @@
 package io.onedev.server.web.component.branch.picker;
 
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 
 import javax.annotation.Nullable;
@@ -12,7 +14,7 @@ import io.onedev.server.OneDev;
 import io.onedev.server.entitymanager.ProjectManager;
 import io.onedev.server.model.Project;
 import io.onedev.server.persistence.dao.Dao;
-import io.onedev.server.security.permission.ReadCode;
+import io.onedev.server.security.SecurityUtils;
 import io.onedev.server.web.component.project.ProjectPicker;
 
 @SuppressWarnings("serial")
@@ -61,15 +63,17 @@ public abstract class AffinalBranchPicker extends Panel {
 	protected void onInitialize() {
 		super.onInitialize();
 		
-		add(new ProjectPicker("projectPicker", new LoadableDetachableModel<List<Project>>() {
+		add(new ProjectPicker("projectPicker", new LoadableDetachableModel<Collection<Project>>() {
 
 			@Override
-			protected List<Project> load() {
+			protected Collection<Project> load() {
 				Project project = OneDev.getInstance(Dao.class).load(Project.class, projectId);
 				List<Project> affinals = project.getForkRoot().getForkChildren();
 				affinals.add(0, project.getForkRoot());
-				affinals.retainAll(OneDev.getInstance(ProjectManager.class).getPermittedProjects(new ReadCode()));
-				
+				for (Iterator<Project> it = affinals.iterator(); it.hasNext();) {
+					if (!SecurityUtils.canReadCode(it.next()))
+						it.remove();
+				}
 				return affinals;
 			}
 			

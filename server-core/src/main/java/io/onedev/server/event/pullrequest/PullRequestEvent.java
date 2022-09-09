@@ -2,8 +2,6 @@ package io.onedev.server.event.pullrequest;
 
 import java.util.Date;
 
-import io.onedev.server.OneDev;
-import io.onedev.server.entitymanager.UrlManager;
 import io.onedev.server.event.ProjectEvent;
 import io.onedev.server.model.PullRequest;
 import io.onedev.server.model.User;
@@ -21,9 +19,4 @@ public abstract class PullRequestEvent extends ProjectEvent {
 		return request;
 	}
 
-	@Override
-	public String getUrl() {
-		return OneDev.getInstance(UrlManager.class).urlFor(request);
-	}
-	
 }

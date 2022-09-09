@@ -2,19 +2,15 @@
 
 <configuration scan="true">
 	<appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-		<encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
-			<layout class="io.onedev.commons.bootstrap.MaskingPatternLayout">
-				<pattern>${logback.consoleLogPattern}</pattern>
-			</layout>
+		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<pattern>${logback.consoleLogPattern}</pattern>
 		</encoder>
 	</appender>
 	
 	<appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
 		<file>${logback.logFile}</file>
-		<encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
-			<layout class="io.onedev.commons.bootstrap.MaskingPatternLayout">
-				<pattern>${logback.fileLogPattern}</pattern>
-			</layout>
+		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<pattern>${logback.fileLogPattern}</pattern>
 		</encoder>
 		<rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
 			<maxIndex>3</maxIndex>

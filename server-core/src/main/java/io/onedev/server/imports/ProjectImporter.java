@@ -1,20 +1,18 @@
 package io.onedev.server.imports;
 
 import java.io.Serializable;
-import java.util.List;
 
 import javax.annotation.Nullable;
 
 import io.onedev.commons.utils.TaskLogger;
-import io.onedev.server.web.util.ImportStep;
 
-public interface ProjectImporter extends Serializable {
+public abstract class ProjectImporter<Where extends Serializable,  What extends Serializable, How extends Serializable> 
+		extends Importer<Where, What, How> {
 
-	String getName();
+	private static final long serialVersionUID = 1L;
 	
-	List<ImportStep<? extends Serializable>> getSteps();
-
 	@Nullable
-	String doImport(boolean dryRun, TaskLogger logger);
+	public abstract String doImport(Where where, What what, How how, 
+			boolean dryRun, TaskLogger logger);
 	
 }

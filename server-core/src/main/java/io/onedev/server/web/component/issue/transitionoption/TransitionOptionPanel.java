@@ -1,7 +1,6 @@
 package io.onedev.server.web.component.issue.transitionoption;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -30,7 +29,6 @@ import io.onedev.server.model.User;
 import io.onedev.server.model.support.issue.field.FieldUtils;
 import io.onedev.server.model.support.issue.transitiontrigger.PressButtonTrigger;
 import io.onedev.server.security.SecurityUtils;
-import io.onedev.server.util.facade.UserCache;
 import io.onedev.server.web.ajaxlistener.ConfirmLeaveListener;
 import io.onedev.server.web.component.markdown.AttachmentSupport;
 import io.onedev.server.web.component.project.comment.CommentInput;
@@ -93,10 +91,7 @@ public abstract class TransitionOptionPanel extends Panel {
 			
 			@Override
 			protected List<User> getMentionables() {
-				UserCache cache = OneDev.getInstance(UserManager.class).cloneCache();		
-				List<User> users = new ArrayList<>(cache.getUsers());
-				users.sort(cache.comparingDisplayName(getIssue().getParticipants()));
-				return users;
+				return OneDev.getInstance(UserManager.class).queryAndSort(getIssue().getParticipants());
 			}
 			
 		});

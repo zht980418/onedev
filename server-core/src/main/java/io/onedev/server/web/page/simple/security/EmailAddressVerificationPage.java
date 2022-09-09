@@ -36,7 +36,7 @@ public class EmailAddressVerificationPage extends SimplePage {
 		EmailAddress emailAddress = emailAddressModel.getObject();
 		String verificationCode = params.get(PARAM_VERIFICATION_CODE).toString();
 
-		if (verificationCode.equals(emailAddress.getVerificationCode())) {
+		if (verificationCode.equals(emailAddress.getVerficationCode())) {
 			emailAddress.setVerificationCode(null);
 			getEmailAddressManager().save(emailAddress);
 		} 

@@ -1,11 +1,16 @@
 package io.onedev.server.model;
 
+import java.util.ArrayList;
+import java.util.Collection;
+
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.Index;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
 import javax.persistence.Table;
 
 import org.apache.commons.lang3.RandomStringUtils;
@@ -16,7 +21,6 @@ import org.hibernate.validator.constraints.NotEmpty;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
-import io.onedev.server.util.facade.EmailAddressFacade;
 import io.onedev.server.web.editable.annotation.Editable;
 
 @Editable
@@ -45,6 +49,10 @@ public class EmailAddress extends AbstractEntity {
     @JoinColumn(nullable=false)
     private User owner;
 
+    @OneToMany(mappedBy="emailAddress", cascade=CascadeType.REMOVE)
+	@Cache(usage=CacheConcurrencyStrategy.READ_WRITE)
+    private Collection<GpgKey> gpgKeys = new ArrayList<>();
+    
     @Editable
     @Email
     @NotEmpty
@@ -57,7 +65,7 @@ public class EmailAddress extends AbstractEntity {
 	}
 
 	@Editable
-	public String getVerificationCode() {
+	public String getVerficationCode() {
 		return verificationCode;
 	}
 
@@ -91,13 +99,16 @@ public class EmailAddress extends AbstractEntity {
         this.owner = owner;
     }
 
+    public Collection<GpgKey> getGpgKeys() {
+		return gpgKeys;
+	}
+
+	public void setGpgKeys(Collection<GpgKey> gpgKeys) {
+		this.gpgKeys = gpgKeys;
+	}
+
 	public boolean isVerified() {
-    	return getVerificationCode() == null;
+    	return getVerficationCode() == null;
     }
 
-	public EmailAddressFacade getFacade() {
-		return new EmailAddressFacade(getId(), getValue(), isPrimary(), isGit(), 
-				getVerificationCode(), getOwner().getId());
-	}
-	
 }

@@ -22,8 +22,7 @@ public class CodeCommentQueryEditSupport implements EditSupport {
 	@Override
 	public PropertyContext<?> getEditContext(PropertyDescriptor descriptor) {
 		Method propertyGetter = descriptor.getPropertyGetter();
-		CodeCommentQuery codeCommentQuery = propertyGetter.getAnnotation(CodeCommentQuery.class);
-        if (codeCommentQuery != null) {
+        if (propertyGetter.getAnnotation(CodeCommentQuery.class) != null) {
         	if (propertyGetter.getReturnType() != String.class) {
 	    		throw new RuntimeException("Annotation 'CodeCommentQuery' should be applied to property "
 	    				+ "with type 'String'");
@@ -63,7 +62,7 @@ public class CodeCommentQueryEditSupport implements EditSupport {
 							return ((ProjectPage) WicketUtils.getPage()).getProject();
 						}
 			    		
-			    	}, codeCommentQuery.withCurrentUserCriteria(), codeCommentQuery.withOrder());
+			    	});
 		        	return new StringPropertyEditor(componentId, descriptor, model).setInputAssist(inputAssist);
 				}
     			

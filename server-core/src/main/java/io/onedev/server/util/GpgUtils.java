@@ -58,12 +58,12 @@ public class GpgUtils {
 		}
 	}
 
-	public static List<String> getEmailAddresses(PGPPublicKey publicKey) {
-		List<String> emailAddresses = new ArrayList<>();
+	public static String getEmailAddress(PGPPublicKey publicKey) {
 		Iterator<String> it = publicKey.getUserIDs();
-		while (it.hasNext())
-			emailAddresses.add(getEmailAddress(it.next()));
-		return emailAddresses;
+		if (it.hasNext()) 
+			return getEmailAddress(it.next());
+		else
+			throw new ExplicitException("No email found");
 	}
 	
 	public static String getEmailAddress(String userId) {

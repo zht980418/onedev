@@ -18,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.onedev.commons.loader.Listen;
+import io.onedev.server.buildspec.param.spec.ParamSpec;
 import io.onedev.server.entitymanager.BuildParamManager;
 import io.onedev.server.event.entity.EntityRemoved;
 import io.onedev.server.event.system.SystemStarted;
@@ -67,7 +68,8 @@ public class DefaultBuildParamManager extends BaseEntityManager<BuildParam> impl
 		for (Object[] fields: (List<Object[]>)query.list()) 
 			projectIds.put((Long)fields[0], (Long)fields[1]);
 		
-		query = dao.getSession().createQuery("select build.id, name from BuildParam");
+		query = dao.getSession().createQuery("select build.id, name from BuildParam where type != :secret");
+		query.setParameter("secret", ParamSpec.SECRET);
 		for (Object[] fields: (List<Object[]>)query.list()) {
 			Long projectId = projectIds.get(fields[0]);
 			if (projectId != null)
@@ -80,22 +82,24 @@ public class DefaultBuildParamManager extends BaseEntityManager<BuildParam> impl
 	public void save(BuildParam param) {
 		super.save(param);
 		
-		Long projectId = param.getBuild().getProject().getId();
-		String paramName = param.getName();
-		
-		transactionManager.runAfterCommit(new Runnable() {
-
-			@Override
-			public void run() {
-				paramNamesLock.writeLock().lock();
-				try {
-					addParam(projectId, paramName);
-				} finally {
-					paramNamesLock.writeLock().unlock();
-				}
-			}
+		if (!param.getType().equals(ParamSpec.SECRET)) {
+			Long projectId = param.getBuild().getProject().getId();
+			String paramName = param.getName();
 			
-		});
+			transactionManager.runAfterCommit(new Runnable() {
+
+				@Override
+				public void run() {
+					paramNamesLock.writeLock().lock();
+					try {
+						addParam(projectId, paramName);
+					} finally {
+						paramNamesLock.writeLock().unlock();
+					}
+				}
+				
+			});
+		}
 	}
 
 	private void addParam(Long projectId, String paramName) {

@@ -33,7 +33,6 @@ import org.apache.wicket.markup.html.list.ListItem;
 import org.apache.wicket.markup.html.list.ListView;
 import org.apache.wicket.markup.html.panel.Fragment;
 import org.apache.wicket.markup.html.panel.Panel;
-import org.apache.wicket.model.AbstractReadOnlyModel;
 import org.apache.wicket.model.IModel;
 import org.apache.wicket.model.LoadableDetachableModel;
 import org.apache.wicket.model.Model;
@@ -59,8 +58,8 @@ import io.onedev.server.util.FilenameUtils;
 import io.onedev.server.util.UrlUtils;
 import io.onedev.server.web.ajaxlistener.ConfirmClickListener;
 import io.onedev.server.web.behavior.ReferenceInputBehavior;
-import io.onedev.server.web.component.blob.BlobFolderSelector;
-import io.onedev.server.web.component.blob.BlobSelector;
+import io.onedev.server.web.component.blob.folderpicker.BlobFolderPicker;
+import io.onedev.server.web.component.blob.picker.BlobPicker;
 import io.onedev.server.web.component.dropzonefield.DropzoneField;
 import io.onedev.server.web.component.floating.FloatingPanel;
 import io.onedev.server.web.component.link.DropdownLink;
@@ -231,20 +230,11 @@ abstract class InsertUrlPanel extends Panel {
 			Set<BlobIdent> filePickerState = getPickerState(commitId, context.getBlobIdent(), 
 					WebSession.get().getMetaData(FILE_PICKER_STATE));
 			
-			IModel<Project> projectModel = new AbstractReadOnlyModel<Project>() {
+			fragment.add(new BlobPicker("files", commitId) {
 
 				@Override
-				public Project getObject() {
-					return markdownEditor.getBlobRenderContext().getProject();
-				}
-				
-			};
-			fragment.add(new BlobSelector("files", projectModel, commitId) {
-
-				@Override
-				protected void onSelect(AjaxRequestTarget target, String blobPath) {
-					BlobIdent blobIdent = new BlobIdent(context.getBlobIdent().revision, blobPath, 
-							FileMode.REGULAR_FILE.getBits());
+				protected void onSelect(AjaxRequestTarget target, BlobIdent blobIdent) {
+					blobIdent = new BlobIdent(context.getBlobIdent().revision, blobIdent.path, blobIdent.mode);
 					String baseUrl = context.getDirectoryUrl();
 					String referenceUrl = urlFor(ProjectBlobPage.class, 
 							ProjectBlobPage.paramsOf(context.getProject(), blobIdent)).toString();
@@ -256,6 +246,11 @@ abstract class InsertUrlPanel extends Panel {
 				@Override
 				protected BlobIdentFilter getBlobIdentFilter() {
 					return blobIdentFilter;
+				}
+
+				@Override
+				protected Project getProject() {
+					return markdownEditor.getBlobRenderContext().getProject();
 				}
 
 				@Override
@@ -483,7 +478,7 @@ abstract class InsertUrlPanel extends Panel {
 
 				@Override
 				protected Component newContent(String id, FloatingPanel dropdown) {
-					return new BlobFolderSelector(id, commitId) {
+					return new BlobFolderPicker(id, commitId) {
 
 						@Override
 						protected void onSelect(AjaxRequestTarget target, BlobIdent blobIdent) {

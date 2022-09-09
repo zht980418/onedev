@@ -15,7 +15,7 @@ public class UnknownUserExceptionHandler extends AbstractExceptionHandler<Unknow
     public Response getResponse(UnknownAccountException exception) {
 		return Response
 				.status(Response.Status.UNAUTHORIZED)
-				.entity("Invalid credentials")
+				.entity("Unknown user")
 				.type(MediaType.TEXT_PLAIN)
 				.build();
     }

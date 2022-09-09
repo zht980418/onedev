@@ -1,6 +1,5 @@
 package io.onedev.server.web.page.project.pullrequests.detail.activities.activity;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.wicket.ajax.AjaxRequestTarget;
@@ -17,7 +16,6 @@ import io.onedev.server.model.PullRequest;
 import io.onedev.server.model.User;
 import io.onedev.server.security.SecurityUtils;
 import io.onedev.server.util.DateUtils;
-import io.onedev.server.util.facade.UserCache;
 import io.onedev.server.web.component.markdown.AttachmentSupport;
 import io.onedev.server.web.component.markdown.ContentVersionSupport;
 import io.onedev.server.web.component.project.comment.CommentPanel;
@@ -59,10 +57,7 @@ class PullRequestOpenedPanel extends GenericPanel<PullRequest> {
 
 			@Override
 			protected List<User> getMentionables() {
-				UserCache cache = OneDev.getInstance(UserManager.class).cloneCache();		
-				List<User> users = new ArrayList<>(cache.getUsers());
-				users.sort(cache.comparingDisplayName(getPullRequest().getParticipants()));
-				return users;
+				return OneDev.getInstance(UserManager.class).queryAndSort(getPullRequest().getParticipants());
 			}
 			
 			@Override

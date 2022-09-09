@@ -1,5 +1,6 @@
 package io.onedev.server.web.component.issue.list;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -83,7 +84,6 @@ import io.onedev.server.util.DateUtils;
 import io.onedev.server.util.Input;
 import io.onedev.server.util.LinkSide;
 import io.onedev.server.util.ProjectScope;
-import io.onedev.server.util.facade.ProjectCache;
 import io.onedev.server.web.WebConstants;
 import io.onedev.server.web.ajaxlistener.AttachAjaxIndicatorListener;
 import io.onedev.server.web.ajaxlistener.AttachAjaxIndicatorListener.AttachMode;
@@ -324,7 +324,7 @@ public abstract class IssueListPanel extends Panel {
 
 			@Override
 			protected List<MenuItem> getMenuItems(FloatingPanel dropdown) {
-				Collection<IssueImporter> importers = new ArrayList<>();
+				Collection<IssueImporter<? extends Serializable, ? extends Serializable, ? extends Serializable>> importers = new ArrayList<>();
 				
 				List<IssueImporterContribution> contributions = 
 						new ArrayList<>(OneDev.getExtensions(IssueImporterContribution.class));
@@ -341,7 +341,7 @@ public abstract class IssueListPanel extends Panel {
 					importers.addAll(contribution.getImporters());
 				
 				List<MenuItem> menuItems = new ArrayList<>();
-				for (IssueImporter importer: importers) {
+				for (IssueImporter<? extends Serializable, ? extends Serializable, ? extends Serializable> importer: importers) {
 					menuItems.add(new MenuItem() {
 
 						@Override
@@ -432,22 +432,24 @@ public abstract class IssueListPanel extends Panel {
 
 				@Override
 				protected Component newContent(String id, FloatingPanel dropdown) {
-					return new ProjectSelector(id, new LoadableDetachableModel<List<Project>>() {
+					return new ProjectSelector(id, new LoadableDetachableModel<Collection<Project>>() {
 	
 						@Override
-						protected List<Project> load() {
-							List<Project> projects = new ArrayList<>(getProjectManger().getPermittedProjects(new AccessProject()));
+						protected Collection<Project> load() {
+							List<Project> projects = new ArrayList<>(OneDev.getInstance(ProjectManager.class)
+									.getPermittedProjects(new AccessProject()));
 							
-							ProjectCache cache = getProjectManger().cloneCache();
-							CollectionUtils.filter(projects, new Predicate<Project>() {
-
+							Predicate<Project> issueManagementEnabledPredicate = item -> item.isIssueManagement();
+							CollectionUtils.filter(projects, issueManagementEnabledPredicate);							
+							
+							Collections.sort(projects, new Comparator<Project>() {
+	
 								@Override
-								public boolean evaluate(Project object) {
-									return cache.get(object.getId()).isIssueManagement();
+								public int compare(Project o1, Project o2) {
+									return o1.getPath().compareTo(o2.getPath());
 								}
 								
-							});							
-							projects.sort(cache.comparingPath());
+							});
 							return projects;
 						}
 						
@@ -572,6 +574,11 @@ public abstract class IssueListPanel extends Panel {
 						return new ModalLink(id) {
 
 							@Override
+							protected String getModalCssClass() {
+								return "modal-lg";
+							}
+
+							@Override
 							protected Component newContent(String id, ModalPanel modal) {
 								dropdown.close();
 								
@@ -652,10 +659,10 @@ public abstract class IssueListPanel extends Panel {
 
 							@Override
 							protected Component newContent(String id, FloatingPanel dropdown2) {
-								return new ProjectSelector(id, new LoadableDetachableModel<List<Project>>() {
+								return new ProjectSelector(id, new LoadableDetachableModel<Collection<Project>>() {
 				
 									@Override
-									protected List<Project> load() {
+									protected Collection<Project> load() {
 										return getTargetProjects();
 									}
 									
@@ -793,6 +800,11 @@ public abstract class IssueListPanel extends Panel {
 						return new ModalLink(id) {
 
 							@Override
+							protected String getModalCssClass() {
+								return "modal-lg";
+							}
+							
+							@Override
 							protected Component newContent(String id, ModalPanel modal) {
 								dropdown.close();
 								
@@ -870,10 +882,10 @@ public abstract class IssueListPanel extends Panel {
 
 							@Override
 							protected Component newContent(String id, FloatingPanel dropdown2) {
-								return new ProjectSelector(id, new LoadableDetachableModel<List<Project>>() {
+								return new ProjectSelector(id, new LoadableDetachableModel<Collection<Project>>() {
 				
 									@Override
-									protected List<Project> load() {
+									protected Collection<Project> load() {
 										return getTargetProjects();
 									}
 									
@@ -1005,24 +1017,23 @@ public abstract class IssueListPanel extends Panel {
 				return menuItems;
 			}
 			
-			private List<Project> getTargetProjects() {
-				Collection<Project> collection = getProjectManger().getPermittedProjects(new AccessProject());
-				ProjectCache cache = getProjectManger().cloneCache();
+			private Collection<Project> getTargetProjects() {
+				List<Project> projects = new ArrayList<>(OneDev.getInstance(ProjectManager.class)
+						.getPermittedProjects(new AccessProject()));
 				
-				CollectionUtils.filter(collection, new Predicate<Project>() {
+				Predicate<Project> issueManagementEnabledPredicate = item -> item.isIssueManagement();
+				CollectionUtils.filter(projects, issueManagementEnabledPredicate);							
+				projects.remove(getProject());
+				
+				Collections.sort(projects, new Comparator<Project>() {
 
 					@Override
-					public boolean evaluate(Project object) {
-						return cache.get(object.getId()).isIssueManagement();
+					public int compare(Project o1, Project o2) {
+						return o1.getPath().compareTo(o2.getPath());
 					}
 					
 				});
-				collection.remove(getProject());
-				
-				List<Project> list = new ArrayList<>(collection);
-				list.sort(cache.comparingPath());
-				
-				return list;
+				return projects;
 			}
 
 			@Override
@@ -1347,10 +1358,6 @@ public abstract class IssueListPanel extends Panel {
 		issuesTable.add(new NoRecordsBehavior());
 
 		setOutputMarkupId(true);
-	}
-	
-	private ProjectManager getProjectManger() {
-		return OneDev.getInstance(ProjectManager.class);
 	}
 	
 	@Nullable

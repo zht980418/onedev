@@ -1,5 +1,5 @@
 // CodeMirror, copyright (c) by Marijn Haverbeke and others
-// Distributed under an MIT license: https://codemirror.net/5/LICENSE
+// Distributed under an MIT license: http://codemirror.net/LICENSE
 
 (function(mod) {
   if (typeof exports == "object" && typeof module == "object") // CommonJS
@@ -261,7 +261,7 @@ CodeMirror.defineMode("pug", function (config) {
       }
       return 'variable';
     }
-    if (stream.match('+#{', false)) {
+    if (stream.match(/^\+#{/, false)) {
       stream.next();
       state.mixinCallAfter = true;
       return interpolation(stream, state);
@@ -545,12 +545,12 @@ CodeMirror.defineMode("pug", function (config) {
       || javaScriptArguments(stream, state)
       || callArguments(stream, state)
 
-      || yieldStatement(stream)
-      || doctype(stream)
+      || yieldStatement(stream, state)
+      || doctype(stream, state)
       || interpolation(stream, state)
       || caseStatement(stream, state)
       || when(stream, state)
-      || defaultStatement(stream)
+      || defaultStatement(stream, state)
       || extendsStatement(stream, state)
       || append(stream, state)
       || prepend(stream, state)
@@ -565,16 +565,16 @@ CodeMirror.defineMode("pug", function (config) {
       || tag(stream, state)
       || filter(stream, state)
       || code(stream, state)
-      || id(stream)
-      || className(stream)
+      || id(stream, state)
+      || className(stream, state)
       || attrs(stream, state)
       || attributesBlock(stream, state)
-      || indent(stream)
+      || indent(stream, state)
       || text(stream, state)
       || comment(stream, state)
-      || colon(stream)
+      || colon(stream, state)
       || dot(stream, state)
-      || fail(stream);
+      || fail(stream, state);
 
     return tok === true ? null : tok;
   }

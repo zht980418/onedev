@@ -20,8 +20,6 @@ import io.onedev.server.entitymanager.UserManager;
 import io.onedev.server.model.User;
 import io.onedev.server.util.ComponentContext;
 import io.onedev.server.util.ReflectionUtils;
-import io.onedev.server.util.facade.UserFacade;
-import io.onedev.server.util.facade.UserCache;
 import io.onedev.server.web.component.user.choice.UserMultiChoice;
 import io.onedev.server.web.editable.PropertyDescriptor;
 import io.onedev.server.web.editable.PropertyEditor;
@@ -42,9 +40,7 @@ public class UserMultiChoiceEditor extends PropertyEditor<List<String>> {
 	protected void onInitialize() {
 		super.onInitialize();
 
-		UserCache cache = getUserManager().cloneCache();
-		
-		List<Long> choiceIds;
+		List<User> choices = new ArrayList<>();
 		
 		ComponentContext componentContext = new ComponentContext(this);
 		ComponentContext.push(componentContext);
@@ -52,33 +48,27 @@ public class UserMultiChoiceEditor extends PropertyEditor<List<String>> {
 			UserChoice userChoice = descriptor.getPropertyGetter().getAnnotation(UserChoice.class);
 			Preconditions.checkNotNull(userChoice);
 			if (userChoice.value().length() != 0) {
-				List<User> users = (List<User>) ReflectionUtils
-						.invokeStaticMethod(descriptor.getBeanClass(), userChoice.value());
-				choiceIds = users.stream().map(it->it.getId()).collect(Collectors.toList());
+				choices.addAll((List<User>)ReflectionUtils
+						.invokeStaticMethod(descriptor.getBeanClass(), userChoice.value()));
 			} else {
-				choiceIds = new ArrayList<>(cache.keySet());
-				choiceIds.removeIf(it->it<0);
-				choiceIds.sort(new Comparator<Long>() {
-
-					@Override
-					public int compare(Long o1, Long o2) {
-						return cache.get(o1).getDisplayName().compareTo(cache.get(o2).getDisplayName());
-					}
-					
-				});
+				choices.addAll(getUserManager().query());
+				choices.sort(Comparator.comparing(User::getDisplayName));
 			}
 		} finally {
 			ComponentContext.pop();
 		}
 
-		List<Long> selectionIds = new ArrayList<>();
+		List<User> selections = new ArrayList<>();
 		if (getModelObject() != null) {
 			for (String userName: getModelObject()) {
-				UserFacade user = cache.findByName(userName);
-				if (user != null && choiceIds.contains(user.getId()))
-					selectionIds.add(user.getId());
+				User user = getUserManager().findByName(userName);
+				if (user != null && choices.contains(user))
+					selections.add(user);
 			}
 		} 
+		
+		List<Long> choiceIds = choices.stream().map(it->it.getId()).collect(Collectors.toList());
+		List<Long> selectionIds = selections.stream().map(it->it.getId()).collect(Collectors.toList());
 		
 		input = new UserMultiChoice("input", new IModel<Collection<User>>() {
 
@@ -98,11 +88,11 @@ public class UserMultiChoiceEditor extends PropertyEditor<List<String>> {
 					selectionIds.addAll(object.stream().map(it->it.getId()).collect(Collectors.toList()));
 			}
 			
-		}, new LoadableDetachableModel<List<User>>() {
+		}, new LoadableDetachableModel<Collection<User>>() {
 
 			@Override
-			protected List<User> load() {
-				return choiceIds.stream().map(it->getUserManager().load(it)).collect(Collectors.toList());
+			protected Collection<User> load() {
+				return choiceIds.stream().map(it-> getUserManager().load(it)).collect(Collectors.toList());
 			}
     		
     	}) {

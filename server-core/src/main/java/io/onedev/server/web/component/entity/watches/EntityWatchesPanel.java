@@ -37,7 +37,7 @@ public abstract class EntityWatchesPanel extends Panel {
 	private List<EntityWatch> getEffectWatches() {
 		List<EntityWatch> watches = new ArrayList<>();
 		for (EntityWatch watch: getEntity().getWatches()) {
-			if (watch.isWatching() && isAuthorized(watch.getUser()))
+			if (watch.isWatching())
 				watches.add(watch);
 		}
 		Collections.sort(watches, new Comparator<EntityWatch>() {
@@ -50,8 +50,6 @@ public abstract class EntityWatchesPanel extends Panel {
 		});
 		return watches;
 	}
-	
-	protected abstract boolean isAuthorized(User user);
 	
 	@Override
 	protected void onInitialize() {

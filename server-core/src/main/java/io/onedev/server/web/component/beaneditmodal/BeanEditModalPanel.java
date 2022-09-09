@@ -13,9 +13,9 @@ import org.apache.wicket.core.request.handler.IPartialPageRequestHandler;
 import io.onedev.server.web.component.modal.ModalPanel;
 
 @SuppressWarnings("serial")
-public abstract class BeanEditModalPanel<T extends Serializable> extends ModalPanel {
+public abstract class BeanEditModalPanel extends ModalPanel {
 
-	private final T bean;
+	private final Serializable bean;
 	
 	private final Collection<String> propertyNames;
 	
@@ -23,11 +23,11 @@ public abstract class BeanEditModalPanel<T extends Serializable> extends ModalPa
 	
 	private final String title;
 	
-	public BeanEditModalPanel(IPartialPageRequestHandler handler, T bean) {
+	public BeanEditModalPanel(IPartialPageRequestHandler handler, Serializable bean) {
 		this(handler, bean, new HashSet<>(), true, null);
 	}
 			
-	public BeanEditModalPanel(IPartialPageRequestHandler handler, T bean, 
+	public BeanEditModalPanel(IPartialPageRequestHandler handler, Serializable bean, 
 			Collection<String> propertyNames, boolean exclude, @Nullable String title) {
 		super(handler);
 		this.bean = bean;
@@ -74,7 +74,7 @@ public abstract class BeanEditModalPanel<T extends Serializable> extends ModalPa
 		};
 	}
 
-	protected abstract void onSave(AjaxRequestTarget target, T bean);
+	protected abstract void onSave(AjaxRequestTarget target, Serializable bean);
 	
 	protected void onCancel(AjaxRequestTarget target) {
 	}

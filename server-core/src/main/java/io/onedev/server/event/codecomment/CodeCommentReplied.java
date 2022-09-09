@@ -1,9 +1,6 @@
 package io.onedev.server.event.codecomment;
 
-import io.onedev.server.OneDev;
-import io.onedev.server.entitymanager.UrlManager;
 import io.onedev.server.model.CodeCommentReply;
-import io.onedev.server.persistence.dao.Dao;
 
 public class CodeCommentReplied extends CodeCommentEvent {
 
@@ -28,14 +25,4 @@ public class CodeCommentReplied extends CodeCommentEvent {
 		return "replied";
 	}
 
-	@Override
-	public CodeCommentEvent cloneIn(Dao dao) {
-		return new CodeCommentReplied(dao.load(CodeCommentReply.class, reply.getId()));
-	}
-	
-	@Override
-	public String getUrl() {
-		return OneDev.getInstance(UrlManager.class).urlFor(reply);
-	}
-	
 }

@@ -1,6 +1,5 @@
 package io.onedev.server.web.page.project.pullrequests.detail.activities.activity;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.wicket.ajax.AjaxRequestTarget;
@@ -12,7 +11,6 @@ import org.apache.wicket.markup.html.panel.GenericPanel;
 import org.apache.wicket.model.AbstractReadOnlyModel;
 import org.apache.wicket.model.IModel;
 
-import io.onedev.commons.utils.ExplicitException;
 import io.onedev.server.OneDev;
 import io.onedev.server.entitymanager.PullRequestCommentManager;
 import io.onedev.server.entitymanager.UserManager;
@@ -22,7 +20,6 @@ import io.onedev.server.model.PullRequestComment;
 import io.onedev.server.model.User;
 import io.onedev.server.security.SecurityUtils;
 import io.onedev.server.util.DateUtils;
-import io.onedev.server.util.facade.UserCache;
 import io.onedev.server.web.component.markdown.AttachmentSupport;
 import io.onedev.server.web.component.markdown.ContentVersionSupport;
 import io.onedev.server.web.component.project.comment.CommentPanel;
@@ -76,8 +73,6 @@ class PullRequestCommentedPanel extends GenericPanel<PullRequestComment> {
 
 			@Override
 			protected void onSaveComment(AjaxRequestTarget target, String comment) {
-				if (comment.length() > PullRequestComment.MAX_CONTENT_LEN)
-					throw new ExplicitException("Comment too long");
 				PullRequestCommentedPanel.this.getComment().setContent(comment);
 				OneDev.getInstance(PullRequestCommentManager.class).save(PullRequestCommentedPanel.this.getComment());
 			}
@@ -96,10 +91,8 @@ class PullRequestCommentedPanel extends GenericPanel<PullRequestComment> {
 
 			@Override
 			protected List<User> getMentionables() {
-				UserCache cache = OneDev.getInstance(UserManager.class).cloneCache();		
-				List<User> users = new ArrayList<>(cache.getUsers());
-				users.sort(cache.comparingDisplayName(PullRequestCommentedPanel.this.getComment().getRequest().getParticipants()));
-				return users;
+				return OneDev.getInstance(UserManager.class).queryAndSort(
+						PullRequestCommentedPanel.this.getComment().getRequest().getParticipants());
 			}
 			
 			@Override

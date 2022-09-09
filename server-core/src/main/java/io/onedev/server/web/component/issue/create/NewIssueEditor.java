@@ -30,10 +30,6 @@ import org.apache.wicket.model.Model;
 import org.apache.wicket.request.IRequestParameters;
 import org.apache.wicket.request.cycle.RequestCycle;
 import org.apache.wicket.util.convert.ConversionException;
-import org.apache.wicket.validation.IErrorMessageSource;
-import org.apache.wicket.validation.IValidatable;
-import org.apache.wicket.validation.IValidationError;
-import org.apache.wicket.validation.IValidator;
 import org.unbescape.javascript.JavaScriptEscape;
 
 import com.google.common.base.Objects;
@@ -199,17 +195,7 @@ public abstract class NewIssueEditor extends FormComponentPanel<Issue> implement
 
 		lastDescriptionTemplate = getDescriptionTemplate(issue);
 		add(descriptionInput = newDescriptionInput(lastDescriptionTemplate));
-		descriptionInput.add(AttributeAppender.append("class", new AbstractReadOnlyModel<String>() {
-
-			@Override
-			public String getObject() {
-				return !descriptionInput.isValid()?" is-invalid":"";
-			}
-			
-		}));
 		
-		add(new FencedFeedbackPanel("descriptionFeedback", descriptionInput));
-
 		add(confidentialInput = new CheckBox("confidential", Model.of(false))); 
 		
 		Collection<Milestone> milestones = issue.getMilestones();
@@ -303,23 +289,6 @@ public abstract class NewIssueEditor extends FormComponentPanel<Issue> implement
 			}
 			
 		};
-		descriptionInput.add(new IValidator<String>() {
-
-			@Override
-			public void validate(IValidatable<String> validatable) {
-				if (validatable.getValue().length() > Issue.MAX_DESCRIPTION_LEN) {
-					validatable.error(new IValidationError() {
-						
-						@Override
-						public Serializable getErrorMessage(IErrorMessageSource messageSource) {
-							return "Description too long";
-						}
-						
-					});
-				}
-			}
-			
-		});
 		descriptionInput.setOutputMarkupId(true);
 		return descriptionInput;
 	}

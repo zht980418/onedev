@@ -1,6 +1,5 @@
 package io.onedev.server.web.component.user.emailaddresses;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,11 +18,7 @@ import org.apache.wicket.markup.html.panel.GenericPanel;
 import org.apache.wicket.model.AbstractReadOnlyModel;
 import org.apache.wicket.model.IModel;
 import org.apache.wicket.model.Model;
-import org.apache.wicket.validation.IErrorMessageSource;
-import org.apache.wicket.validation.IValidatable;
-import org.apache.wicket.validation.IValidationError;
-import org.apache.wicket.validation.IValidator;
-import org.hibernate.validator.internal.constraintvalidators.hv.EmailValidator;
+import org.apache.wicket.validation.validator.EmailAddressValidator;
 
 import io.onedev.server.OneDev;
 import io.onedev.server.entitymanager.EmailAddressManager;
@@ -242,24 +237,7 @@ public class EmailAddressesPanel extends GenericPanel<User> {
 		});
 		input.setLabel(Model.of("Email address"));
 		input.setRequired(true);
-		input.add(new IValidator<String>() {
-
-			@Override
-			public void validate(IValidatable<String> validatable) {
-				String emailAddress = validatable.getValue();
-				if (!new EmailValidator().isValid(emailAddress, null)) {
-					validatable.error(new IValidationError() {
-						
-						@Override
-						public Serializable getErrorMessage(IErrorMessageSource messageSource) {
-							return "Malformed email address";
-						}
-						
-					});
-				}
-			}
-			
-		});
+		input.add(EmailAddressValidator.getInstance());
 		form.add(input);
 		add(new FencedFeedbackPanel("feedback", form));
 		add(form);

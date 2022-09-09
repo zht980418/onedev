@@ -91,6 +91,11 @@ abstract class BacklogColumnPanel extends Panel {
 		add(new ModalLink("addCard") {
 
 			@Override
+			protected String getModalCssClass() {
+				return "modal-lg";
+			}
+
+			@Override
 			protected Component newContent(String id, ModalPanel modal) {
 				return new NewCardPanel(id) {
 

@@ -8,6 +8,7 @@ import org.apache.shiro.authc.AuthenticationInfo;
 import org.apache.shiro.authc.AuthenticationToken;
 import org.apache.shiro.authc.credential.AllowAllCredentialsMatcher;
 
+import io.onedev.server.entitymanager.EmailAddressManager;
 import io.onedev.server.entitymanager.GroupManager;
 import io.onedev.server.entitymanager.ProjectManager;
 import io.onedev.server.entitymanager.SettingManager;
@@ -20,8 +21,10 @@ public class BearerAuthorizingRealm extends AbstractAuthorizingRealm {
 
 	@Inject
     public BearerAuthorizingRealm(UserManager userManager, GroupManager groupManager, 
-    		ProjectManager projectManager, SessionManager sessionManager, SettingManager settingManager) {
-		super(userManager, groupManager, projectManager, sessionManager, settingManager);
+    		ProjectManager projectManager, SessionManager sessionManager, 
+    		SettingManager settingManager, EmailAddressManager emailAddressManager) {
+		super(userManager, groupManager, projectManager, sessionManager, 
+				settingManager, emailAddressManager);
 		setCredentialsMatcher(new AllowAllCredentialsMatcher());
     }
 

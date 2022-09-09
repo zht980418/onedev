@@ -113,10 +113,6 @@ public class BuildQuery extends EntityQuery<Build> {
 							return new CancelledCriteria();
 						case BuildQueryLexer.TimedOut:
 							return new TimedOutCriteria();
-						case BuildQueryLexer.Finished:
-							if (!withUnfinishedCriteria)
-								throw new ExplicitException("Criteria '" + ctx.operator.getText() + "' is not supported here");
-							return new FinishedCriteria();
 						case BuildQueryLexer.Waiting:
 							if (!withUnfinishedCriteria)
 								throw new ExplicitException("Criteria '" + ctx.operator.getText() + "' is not supported here");

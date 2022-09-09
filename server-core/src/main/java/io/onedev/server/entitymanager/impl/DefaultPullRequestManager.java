@@ -391,16 +391,22 @@ public class DefaultPullRequestManager extends BaseEntityManager<PullRequest> im
 		
 		Long requestId = request.getId();
 		ObjectId newTargetHeadId = mergeCommitId;
-		sessionManager.runAsyncAfterCommit(new Runnable() {
+		transactionManager.runAfterCommit(new Runnable() {
 
 			@Override
 			public void run() {
-				PullRequest request = load(requestId);
-				request.getTargetProject().cacheObjectId(request.getTargetRef(), newTargetHeadId);
-				listenerRegistry.post(new RefUpdated(request.getTargetProject(), targetRef, 
-							targetHeadCommitId, newTargetHeadId));
+				dao.getSessionManager().runAsync(new Runnable() {
+
+					@Override
+					public void run() {
+						PullRequest request = load(requestId);
+						request.getTargetProject().cacheObjectId(request.getTargetRef(), newTargetHeadId);
+						listenerRegistry.post(new RefUpdated(request.getTargetProject(), targetRef, 
+									targetHeadCommitId, newTargetHeadId));
+					}
+					
+				});
 			}
-			
 		});
 	}
 	
@@ -727,7 +733,7 @@ public class DefaultPullRequestManager extends BaseEntityManager<PullRequest> im
 					        	 * can not lock the check method directly as the lock should be put outside 
 					        	 * of transaction
 					        	 */
-					        	LockUtils.call(PullRequest.getSerialLockName(requestId), true, new Callable<Void>() {
+					        	LockUtils.call("request-" + requestId + "-check", new Callable<Void>() {
 
 									@Override
 									public Void call() throws Exception {
@@ -881,12 +887,13 @@ public class DefaultPullRequestManager extends BaseEntityManager<PullRequest> im
 		if (targetProject != null) {
 			predicates.add(builder.equal(from.get(PullRequest.PROP_TARGET_PROJECT), targetProject));
 		} else if (!SecurityUtils.isAdministrator()) {
-			Collection<Project> projects = projectManager.getPermittedProjects(new ReadCode());
+			Collection<Project> projects = projectManager.getPermittedProjects(new ReadCode()); 
 			if (!projects.isEmpty()) {
+				Collection<Long> allIds = projectManager.getProjectIds();
+				Collection<Long> projectIds = 
+						projects.stream().map(it->it.getId()).collect(Collectors.toList());
 				Path<Long> projectIdPath = from.get(PullRequest.PROP_TARGET_PROJECT).get(Project.PROP_ID);
-				predicates.add(Criteria.forManyValues(builder, projectIdPath, 
-						projects.stream().map(it->it.getId()).collect(Collectors.toSet()), 
-						projectManager.getIds()));
+				predicates.add(Criteria.forManyValues(builder, projectIdPath, projectIds, allIds));
 			} else {
 				predicates.add(builder.disjunction());
 			}
@@ -1046,8 +1053,6 @@ public class DefaultPullRequestManager extends BaseEntityManager<PullRequest> im
 	public void saveDescription(PullRequest request, @Nullable String description) {
 		String prevDescription = request.getDescription();
 		if (!Objects.equal(description, prevDescription)) {
-			if (description != null && description.length() > PullRequest.MAX_DESCRIPTION_LEN)
-				throw new ExplicitException("Description too long"); 
 			request.setDescription(description);
 			referenceManager.addReferenceChange(request, description);
 			save(request);

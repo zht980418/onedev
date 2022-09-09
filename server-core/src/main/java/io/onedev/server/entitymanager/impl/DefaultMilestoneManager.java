@@ -5,7 +5,6 @@ import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
-import org.hibernate.criterion.Order;
 import org.hibernate.criterion.Restrictions;
 
 import io.onedev.commons.utils.StringUtils;
@@ -64,16 +63,6 @@ public class DefaultMilestoneManager extends BaseEntityManager<Milestone> implem
 	@Override
 	public int count() {
 		return count(true);
-	}
-
-	@Sessional
-	@Override
-	public Milestone findNextOpen(Project project) {
-		EntityCriteria<Milestone> criteria = EntityCriteria.of(Milestone.class);
-		criteria.add(Restrictions.in("project", project.getSelfAndAncestors()));
-		criteria.add(Restrictions.eq(Milestone.PROP_CLOSED, false));
-		criteria.addOrder(Order.asc(Milestone.PROP_DUE_DATE));
-		return find(criteria);
 	}
 	
 }
